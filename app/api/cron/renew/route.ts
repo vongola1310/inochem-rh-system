@@ -1,65 +1,74 @@
 import { PrismaClient } from '@prisma/client'
 import { NextResponse } from 'next/server'
 import { calculateVacationDays } from '@/lib/vacation-logic'
+import { differenceInYears } from 'date-fns'
+
+// IMPORTANTE: Esto evita que Next.js intente pre-renderizar esta ruta en el build
+export const dynamic = 'force-dynamic'
 
 const prisma = new PrismaClient()
 
-// Esta ruta se debe llamar automáticamente (ej. via Vercel Cron, GitHub Actions o un servicio externo)
-// Se recomienda configurarlo para que corra una vez al día (ej. a las 00:01 AM)
 export async function GET(request: Request) {
   // 1. SEGURIDAD: Verificar token secreto
   // Esto evita que cualquiera pueda ejecutar la renovación visitando la URL
   const authHeader = request.headers.get('authorization');
   
-  // Debes definir CRON_SECRET en tu archivo .env con una clave segura
+  // Debes definir CRON_SECRET en tu archivo .env (y en Vercel) con una clave segura
   if (authHeader !== `Bearer ${process.env.CRON_SECRET || 'clave_secreta_default'}`) {
     return new NextResponse('Unauthorized', { status: 401 });
   }
 
   const today = new Date()
-  // Obtenemos mes y día actuales para comparar aniversarios
   const currentMonth = today.getMonth() + 1
   const currentDay = today.getDate()
 
   try {
-    // 2. Buscar todos los empleados activos (excluyendo roles que no acumulen si es el caso)
+    // 2. Buscar todos los empleados activos
+    // Traemos a todos los que tienen rol de EMPLEADO o ADMIN (quizás excluyendo HR si no acumula)
     const allEmployees = await prisma.user.findMany({
-      where: { role: { not: 'HR' } }, // Ajusta este filtro según tu política
+      where: { role: { not: 'HR' } }, 
       include: { balance: true }
     })
 
     // 3. Filtrar en memoria quiénes cumplen aniversario HOY
-    // Comparamos solo día y mes de su fecha de ingreso (entryDate)
+    // Comparamos solo día y mes de su fecha de ingreso
     const anniversaryEmployees = allEmployees.filter(emp => {
       const entryDate = new Date(emp.entryDate)
+      // Usamos getMonth() + 1 porque en JS los meses van de 0 a 11
+      // Usamos getUTCDate() si guardaste con T12:00:00Z para ser precisos, 
+      // o getDate() local dependiendo de tu servidor.
+      // Al usar T12:00:00Z, getDate() suele funcionar bien en la mayoría de zonas horarias de América.
       return entryDate.getDate() === currentDay && (entryDate.getMonth() + 1) === currentMonth
     })
 
     let renewedCount = 0;
     const logs: string[] = [];
 
-    // 4. Procesar la renovación para los cumpleañeros
+    // 4. Procesar la renovación
     for (const emp of anniversaryEmployees) {
-      // Calculamos cuántos días le tocan por su NUEVA antigüedad
-      const newDays = calculateVacationDays(emp.entryDate)
+      // Calculamos la antigüedad exacta que cumple HOY
+      const yearsWorked = differenceInYears(today, emp.entryDate)
       
-      if (emp.balance) {
-          // ACTUALIZACIÓN DE SALDO
-          // Aquí asumimos que los días son acumulables (se suman a lo que ya tenía).
-          // Si la política es "lo que no usaste se pierde", deberías resetear 'totalDays' en lugar de incrementar.
+      // Solo renovamos si no se ha procesado este año todavía
+      // (Aunque el cron corra una vez al día, es una doble verificación segura)
+      if (emp.balance && emp.balance.lastYearProcessed < yearsWorked) {
+          
+          // Calculamos cuántos días le tocan por este nuevo año (Ley + Bono)
+          const newDays = calculateVacationDays(emp.entryDate)
+          
           await prisma.vacationBalance.update({
               where: { id: emp.balance.id },
               data: {
-                  totalDays: { increment: newDays } 
+                  totalDays: { increment: newDays }, // Sumamos al saldo acumulado
+                  lastYearProcessed: yearsWorked     // Marcamos este año como pagado
               }
           })
           
-          logs.push(`Renovado: ${emp.name} (Antigüedad: ${emp.entryDate.toISOString().split('T')[0]}) -> +${newDays} días agregados.`)
+          logs.push(`Renovado: ${emp.name} (Antigüedad: ${yearsWorked} años) -> +${newDays} días.`)
           renewedCount++;
       }
     }
 
-    // 5. Retornar resultado
     return NextResponse.json({ 
       success: true, 
       message: `Proceso finalizado. Se renovaron ${renewedCount} empleados.`,
