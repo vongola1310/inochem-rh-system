@@ -1,65 +1,324 @@
-import Image from "next/image";
+import { PrismaClient } from '@prisma/client'
+import { NotificationBell } from '@/components/ui/notification-bell'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { RequestHistory } from '@/components/request-history'
+import { VacationRequestForm } from '@/components/forms/vacation-request-form'
+import { PermitRequestForm } from '@/components/forms/permit-request-form'
+import { auth } from '@/auth'
+import { redirect } from 'next/navigation'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Button } from '@/components/ui/button'
+import { LogOut, Briefcase, Calendar, Users, FileText } from 'lucide-react'
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import Image from 'next/image'
+import Link from 'next/link'
+import { checkAndRenewBalance } from '@/lib/check-renewal'
+import { format, addYears, setYear, isBefore } from 'date-fns'
+import { es } from 'date-fns/locale'
+import { BackupManager } from '@/components/dashboard/backup-manager'
 
-export default function Home() {
+const prisma = new PrismaClient()
+
+export default async function Home() {
+  const session = await auth()
+
+  if (!session?.user?.email) {
+    redirect('/login')
+  }
+
+  // 1. Renovación automática al entrar (Lazy Evaluation)
+  // Si hoy es el aniversario laboral del usuario, se le suman sus días antes de cargar la vista.
+  if (session.user.id) {
+    await checkAndRenewBalance(session.user.id)
+  }
+
+  // 2. Obtener datos del usuario
+  const user = await prisma.user.findUnique({
+    where: { email: session.user.email },
+    include: { 
+        balance: true, 
+        subordinates: true,
+        backupUser: true 
+    }
+  })
+
+  // 3. Obtener días festivos para el calendario de vacaciones
+  const holidaysRaw = await prisma.holiday.findMany({
+    select: { date: true, name: true }
+  })
+  
+  const holidays = holidaysRaw.map(h => ({
+    name: h.name,
+    date: h.date.toISOString()
+  }))
+
+  // 4. Obtener lista de candidatos para respaldo (Jefe Interino)
+  // Excluimos al propio usuario (no puede ser su propio jefe) y opcionalmente a RH
+  const potentialBackups = await prisma.user.findMany({
+    where: { 
+        id: { not: user?.id },
+        role: { not: 'HR' } 
+    },
+    select: { id: true, name: true, jobTitle: true },
+    orderBy: { name: 'asc' }
+  })
+
+  if (!user) return <div className="p-8 text-red-500">Error: Usuario no encontrado en base de datos.</div>
+
+  // --- CÁLCULOS DE SALDO Y VIGENCIA ---
+  
+  const totalDays = user.balance?.totalDays || 0
+  const usedDays = user.balance?.usedDays || 0
+  const pendingDays = user.balance?.pendingDays || 0
+  
+  // Saldo Real Disponible = Total - (Gastados + Comprometidos)
+  const availableDays = totalDays - usedDays - pendingDays
+
+  // Cálculo del ciclo de vigencia actual (Aniversario pasado - Próximo aniversario)
+  const today = new Date()
+  const entryDate = new Date(user.entryDate)
+  const currentYear = today.getFullYear()
+  
+  // Calculamos la fecha de aniversario de ESTE año
+  let cycleStart = setYear(entryDate, currentYear)
+  
+  // Si hoy es ANTES del aniversario de este año, el ciclo empezó el año pasado
+  if (isBefore(today, cycleStart)) {
+    cycleStart = addYears(cycleStart, -1)
+  }
+  const cycleEnd = addYears(cycleStart, 1)
+
+  const isManager = user.subordinates.length > 0;
+  
+  // Iniciales para avatar
+  const initials = user.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="min-h-screen bg-linear-to-br from-slate-50 via-slate-100 to-slate-50">
+      {/* NAVBAR */}
+      <nav className="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-50 backdrop-blur-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-20">
+            {/* Logo */}
+            <div className="flex items-center gap-4">
+              <div className="relative h-12 w-40 shrink-0">
+                <div className="flex items-center gap-2">
+                    <div className="h-8 w-8 bg-slate-900 rounded flex items-center justify-center text-white font-bold">I</div>
+                    <span className="font-bold text-xl text-slate-900">Inochem</span>
+                </div>
+              </div>
+              <div className="hidden lg:block border-l border-slate-300 pl-4">
+                <h1 className="font-bold text-xl text-slate-900">Sistema RH</h1>
+                <p className="text-xs text-slate-500">Solicitud de Vacaciones</p>
+              </div>
+            </div>
+            
+            {/* Usuario y Acciones */}
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="text-right hidden lg:block">
+                <p className="text-sm font-semibold text-slate-900">{user.name}</p>
+                <p className="text-xs text-slate-600">{user.jobTitle}</p>
+              </div>
+              
+              {/* Botones Admin (Solo visibles para RH) */}
+              {(user as any).role === 'HR' && (
+                <div className="hidden md:flex items-center gap-2">
+                  <Link href="/admin">
+                    <Button variant="outline" size="sm" className="border-[#73C056] text-[#73C056] hover:bg-[#73C056] hover:text-white transition-all">
+                      <Users className="h-4 w-4 mr-1.5" /> Panel RH
+                    </Button>
+                  </Link>
+                  <Link href="/admin/reports">
+                    <Button variant="outline" size="sm" className="border-[#73C056] text-[#73C056] hover:bg-[#73C056] hover:text-white transition-all">
+                      <FileText className="h-4 w-4 mr-1.5" /> Reportes
+                    </Button>
+                  </Link>
+                  <Link href="/admin/users">
+                    <Button variant="outline" size="sm" className="border-[#73C056] text-[#73C056] hover:bg-[#73C056] hover:text-white transition-all">
+                      <Briefcase className="h-4 w-4 mr-1.5" /> Usuarios
+                    </Button>
+                  </Link>
+                  <Link href="/admin/holidays">
+                    <Button variant="outline" size="sm" className="border-[#73C056] text-[#73C056] hover:bg-[#73C056] hover:text-white transition-all">
+                      <Calendar className="h-4 w-4 mr-1.5" /> Días festivos
+                    </Button>
+                  </Link>
+                </div>
+              )}
+              
+              {/* Botón Perfil (Avatar con enlace) */}
+              <Link href="/profile">
+                <Avatar className="h-10 w-10 border-2 border-white shadow-sm hover:ring-2 hover:ring-[#73C056] transition-all cursor-pointer">
+                    {/* Si en un futuro habilitas imágenes, aquí iría src={user.image} */}
+                    <AvatarImage src="" className="object-cover" />
+                    <AvatarFallback className="bg-slate-200 text-slate-600 font-bold">
+                        {initials}
+                    </AvatarFallback>
+                </Avatar>
+              </Link>
+
+              <NotificationBell userId={user.id} />
+              
+              <form action={async () => {
+                'use server'
+                const { signOut } = await import('@/auth')
+                await signOut({ redirectTo: '/login' })
+              }}>
+                <button className="flex items-center justify-center h-10 w-10 rounded-lg bg-slate-100 text-slate-700 hover:bg-red-50 hover:text-red-600 transition-all" title="Cerrar Sesión">
+                  <LogOut className="h-5 w-5" />
+                </button>
+              </form>
+            </div>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+      </nav>
+
+      {/* DASHBOARD CONTENT */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
+        <div className="mb-6 lg:hidden">
+          <h2 className="text-xl font-bold text-slate-900">Hola, {user.name?.split(' ')[0]} 👋</h2>
+          <p className="text-sm text-slate-600">{user.jobTitle}</p>
         </div>
-      </main>
+
+        {/* TARJETAS DE RESUMEN */}
+        <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 mb-6 lg:mb-8">
+          
+          {/* Tarjeta 1: Puesto */}
+          <Card className="border-l-4 border-l-[#73C056] hover:shadow-lg transition-all hover:-translate-y-1">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-medium text-slate-600">Mi Puesto</CardTitle>
+                <div className="h-10 w-10 rounded-full bg-[#73C056]/10 flex items-center justify-center shrink-0">
+                  <Briefcase className="h-5 w-5 text-[#73C056]" />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-lg sm:text-xl font-bold text-slate-900 truncate" title={user.jobTitle || ''}>
+                {user.jobTitle}
+              </div>
+              <p className="text-xs text-slate-500 mt-1">Cargo actual</p>
+            </CardContent>
+          </Card>
+          
+          {/* Tarjeta 2: Días Disponibles (Con Vigencia) */}
+          <Card className="border-l-4 border-l-[#73C056] hover:shadow-lg transition-all hover:-translate-y-1">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-medium text-slate-600">Días Disponibles</CardTitle>
+                <div className="h-10 w-10 rounded-full bg-[#73C056]/10 flex items-center justify-center shrink-0">
+                  <Calendar className="h-5 w-5 text-[#73C056]" />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-baseline gap-2">
+                <span className={`text-3xl sm:text-4xl font-bold ${availableDays < 0 ? 'text-red-500' : 'text-[#73C056]'}`}>
+                  {availableDays}
+                </span>
+                <span className="text-sm text-slate-600 font-medium">días</span>
+              </div>
+              
+              <div className="text-xs text-slate-500 mt-2 flex flex-col gap-0.5">
+                <div className="flex justify-between font-medium">
+                    <span className="text-slate-400">Vigencia:</span>
+                    <span className="text-slate-700">
+                        {format(cycleStart, "d MMM yyyy", { locale: es })} - {format(cycleEnd, "d MMM yyyy", { locale: es })}
+                    </span>
+                </div>
+                <div className="flex justify-between">
+                    <span className="text-slate-400">Fecha Ingreso:</span>
+                    <span>{format(entryDate, "d MMM yyyy", { locale: es })}</span>
+                </div>
+                {pendingDays > 0 && <span className="text-orange-600 font-medium mt-1">({pendingDays} días en aprobación)</span>}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Tarjeta 3: Equipo */}
+          <Card className="border-l-4 border-l-[#73C056] hover:shadow-lg transition-all hover:-translate-y-1 sm:col-span-2 lg:col-span-1">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-medium text-slate-600">Mi Equipo</CardTitle>
+                <div className="h-10 w-10 rounded-full bg-[#73C056]/10 flex items-center justify-center shrink-0">
+                  <Users className="h-5 w-5 text-[#73C056]" />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-baseline gap-2">
+                <span className="text-3xl sm:text-4xl font-bold text-slate-900">{user.subordinates.length}</span>
+                <span className="text-sm text-slate-600 font-medium">personas</span>
+              </div>
+              <p className="text-xs text-slate-500 mt-1">A tu cargo</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* GRID DE CONTENIDO PRINCIPAL */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
+          {/* COLUMNA IZQUIERDA - FORMULARIOS Y GESTIÓN */}
+          <div className="lg:col-span-7 xl:col-span-8 space-y-6">
+            
+            {/* Gestor de Respaldo (Solo si es jefe) */}
+            {isManager && (
+                <BackupManager 
+                    employees={potentialBackups} 
+                    currentBackupId={user.backupId}
+                    currentStart={user.backupStartDate}
+                    currentEnd={user.backupEndDate}
+                />
+            )}
+
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+              <div className="bg-linear-to-r from-[#73C056] to-[#62a847] p-6">
+                <div className="flex items-center gap-3">
+                  <div className="h-12 w-12 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0">
+                    <FileText className="h-6 w-6 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl sm:text-2xl font-bold text-white">Nueva Solicitud</h2>
+                    <p className="text-sm text-white/90">Completa el formulario correspondiente</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="p-4 sm:p-6">
+                <Tabs defaultValue="vacations" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2 mb-6 bg-slate-100 p-1 h-auto">
+                    <TabsTrigger value="vacations" className="data-[state=active]:bg-[#73C056] data-[state=active]:text-white transition-all py-2.5">
+                      <Calendar className="h-4 w-4 mr-1.5 hidden sm:inline" /> Vacaciones (FO03)
+                    </TabsTrigger>
+                    <TabsTrigger value="permits" className="data-[state=active]:bg-[#73C056] data-[state=active]:text-white transition-all py-2.5">
+                      <FileText className="h-4 w-4 mr-1.5 hidden sm:inline" /> Permiso (FO02)
+                    </TabsTrigger>
+                  </TabsList>
+                  
+                  <TabsContent value="vacations" className="mt-0">
+                    {/* Pasamos 'holidays' para el cálculo de días hábiles */}
+                    <VacationRequestForm userId={user.id} holidays={holidays} />
+                  </TabsContent>
+                  
+                  <TabsContent value="permits" className="mt-0">
+                    {/* Pasamos 'userBirthDate' para el autocompletado de cumpleaños */}
+                    <PermitRequestForm 
+                        userId={user.id} 
+                        userBirthDate={user.birthDate} 
+                    />
+                  </TabsContent>
+                </Tabs>
+              </div>
+            </div>
+          </div>
+
+          {/* COLUMNA DERECHA - HISTORIAL */}
+          <div className="lg:col-span-5 xl:col-span-4">
+            <div className="lg:sticky lg:top-24">
+              <RequestHistory userId={user.id} />
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
-  );
+  )
 }
