@@ -14,30 +14,28 @@ export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization');
   
   // Debes definir CRON_SECRET en tu archivo .env (y en Vercel) con una clave segura
+  // Si no la tienes definida aún, usa una por defecto temporalmente o configúrala ya.
   if (authHeader !== `Bearer ${process.env.CRON_SECRET || 'clave_secreta_default'}`) {
     return new NextResponse('Unauthorized', { status: 401 });
   }
 
   const today = new Date()
+  // Usamos getMonth() + 1 porque en JS los meses van de 0 a 11
   const currentMonth = today.getMonth() + 1
   const currentDay = today.getDate()
 
   try {
-    // 2. Buscar todos los empleados activos
-    // Traemos a todos los que tienen rol de EMPLEADO o ADMIN (quizás excluyendo HR si no acumula)
+    // 2. Buscar todos los empleados activos (excluyendo roles que no acumulen si es el caso)
     const allEmployees = await prisma.user.findMany({
       where: { role: { not: 'HR' } }, 
       include: { balance: true }
     })
 
     // 3. Filtrar en memoria quiénes cumplen aniversario HOY
-    // Comparamos solo día y mes de su fecha de ingreso
     const anniversaryEmployees = allEmployees.filter(emp => {
       const entryDate = new Date(emp.entryDate)
-      // Usamos getMonth() + 1 porque en JS los meses van de 0 a 11
-      // Usamos getUTCDate() si guardaste con T12:00:00Z para ser precisos, 
-      // o getDate() local dependiendo de tu servidor.
-      // Al usar T12:00:00Z, getDate() suele funcionar bien en la mayoría de zonas horarias de América.
+      // Comparamos solo día y mes de su fecha de ingreso
+      // Al usar T12:00:00Z en el registro, getDate() funciona bien en la mayoría de zonas horarias.
       return entryDate.getDate() === currentDay && (entryDate.getMonth() + 1) === currentMonth
     })
 
@@ -50,7 +48,7 @@ export async function GET(request: Request) {
       const yearsWorked = differenceInYears(today, emp.entryDate)
       
       // Solo renovamos si no se ha procesado este año todavía
-      // (Aunque el cron corra una vez al día, es una doble verificación segura)
+      // Verificamos que emp.balance no sea null y que el año procesado sea menor al actual
       if (emp.balance && emp.balance.lastYearProcessed < yearsWorked) {
           
           // Calculamos cuántos días le tocan por este nuevo año (Ley + Bono)
