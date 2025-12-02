@@ -3,7 +3,7 @@ import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
 import { RegisterEmployeeForm } from '@/components/admin/register-employee-form'
 import { EmployeesTable } from '@/components/admin/employees-table'
-import { RefreshCw, Users, UserPlus, Building2, ArrowLeft } from 'lucide-react' 
+import { RefreshCw, Users, UserPlus, Building2, ArrowLeft, AlertTriangle } from 'lucide-react' 
 import { Button } from '@/components/ui/button'
 import { syncAllBalances } from '@/app/actions/sync-balances'
 import Link from 'next/link'
@@ -37,6 +37,52 @@ export default async function UsersPage() {
     }
   })
 
+  // Calcular empleados con vacaciones próximas a vencer (menos de 3 meses para el ciclo)
+  const now = new Date()
+  const threeMonthsFromNow = new Date(now)
+  threeMonthsFromNow.setMonth(threeMonthsFromNow.getMonth() + 3)
+
+  // Obtener todos los usuarios con sus fechas de ingreso
+  const usersWithBalance = await prisma.user.findMany({
+    where: { balance: { isNot: null } },
+    select: { 
+      id: true, 
+      entryDate: true,
+      balance: {
+        select: {
+          totalDays: true,
+          usedDays: true,
+          pendingDays: true
+        }
+      }
+    }
+  })
+
+  // Contar empleados con vacaciones por vencer (tienen días disponibles y su ciclo vence en menos de 3 meses)
+  let expiringVacations = 0
+  for (const user of usersWithBalance) {
+    if (!user.balance) continue
+    
+    const available = user.balance.totalDays - user.balance.usedDays - user.balance.pendingDays
+    if (available <= 0) continue // No tiene días disponibles
+    
+    // Calcular cuándo vence su ciclo actual (un año después de su fecha de ingreso)
+    const entryDate = new Date(user.entryDate)
+    const currentYear = now.getFullYear()
+    let cycleEnd = new Date(entryDate)
+    cycleEnd.setFullYear(currentYear)
+    
+    // Si el ciclo ya pasó este año, usar el del año siguiente
+    if (cycleEnd < now) {
+      cycleEnd.setFullYear(currentYear + 1)
+    }
+    
+    // Si el ciclo vence en los próximos 3 meses, contar
+    if (cycleEnd <= threeMonthsFromNow) {
+      expiringVacations++
+    }
+  }
+
   return (
     <div className="min-h-screen bg-linear-to-br from-slate-50 via-blue-50/20 to-slate-50">
       <div className="p-4 sm:p-6 lg:p-8">
@@ -55,7 +101,7 @@ export default async function UsersPage() {
               </Button>
             </Link>
 
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
               <div>
                 <div className="flex items-center gap-2 text-sm text-slate-500 mb-2">
                   <Building2 className="h-4 w-4" />
@@ -86,54 +132,64 @@ export default async function UsersPage() {
               </form>
             </div>
 
-            {/* Stats Cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
-              <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-lg bg-[#73C056]/10 flex items-center justify-center">
-                    <Users className="h-5 w-5 text-[#73C056]" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold text-slate-900">{totalEmployees}</p>
-                    <p className="text-xs text-slate-500">Total Empleados</p>
+            {/* Stats Cards - Centradas y sin la cuarta tarjeta */}
+            <div className="flex justify-center">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-4xl w-full">
+                
+                {/* Total Empleados */}
+                <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5">
+                  <div className="flex items-center gap-3">
+                    <div className="h-12 w-12 rounded-xl bg-[#73C056]/10 flex items-center justify-center shrink-0">
+                      <Users className="h-6 w-6 text-[#73C056]" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-3xl font-bold text-slate-900">{totalEmployees}</p>
+                      <p className="text-xs text-slate-500 font-medium">Total Empleados</p>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-lg bg-green-100 flex items-center justify-center">
-                    <UserPlus className="h-5 w-5 text-green-600" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold text-slate-900">{activeEmployees}</p>
-                    <p className="text-xs text-slate-500">Activos</p>
+                {/* Empleados Activos */}
+                <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5">
+                  <div className="flex items-center gap-3">
+                    <div className="h-12 w-12 rounded-xl bg-green-100 flex items-center justify-center shrink-0">
+                      <UserPlus className="h-6 w-6 text-green-600" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-3xl font-bold text-slate-900">{activeEmployees}</p>
+                      <p className="text-xs text-slate-500 font-medium">Activos</p>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                    <Building2 className="h-5 w-5 text-blue-600" />
+                {/* Vacaciones por Vencer */}
+                <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5">
+                  <div className="flex items-center gap-3">
+                    <div className={`h-12 w-12 rounded-xl flex items-center justify-center shrink-0 ${
+                      expiringVacations > 0 ? 'bg-amber-100' : 'bg-blue-100'
+                    }`}>
+                      <AlertTriangle className={`h-6 w-6 ${
+                        expiringVacations > 0 ? 'text-amber-600' : 'text-blue-600'
+                      }`} />
+                    </div>
+                    <div className="flex-1">
+                      <p className={`text-3xl font-bold ${
+                        expiringVacations > 0 ? 'text-amber-600' : 'text-slate-900'
+                      }`}>
+                        {expiringVacations}
+                      </p>
+                      <p className="text-xs text-slate-500 font-medium">Por Vencer</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-2xl font-bold text-slate-900">{potentialBosses.length}</p>
-                    <p className="text-xs text-slate-500">Posibles Jefes</p>
-                  </div>
+                  {expiringVacations > 0 && (
+                    <div className="mt-3 pt-3 border-t border-slate-100">
+                      <p className="text-xs text-amber-600 font-medium">
+                        ⚠️ Días vencen en 3 meses
+                      </p>
+                    </div>
+                  )}
                 </div>
-              </div>
 
-              <div className="bg-linear-to-br from-[#73C056] to-[#62a847] rounded-xl p-4 shadow-md hover:shadow-lg transition-shadow">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-lg bg-white/20 flex items-center justify-center">
-                    <RefreshCw className="h-5 w-5 text-white" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold text-white">RH</p>
-                    <p className="text-xs text-white/80">Panel Activo</p>
-                  </div>
-                </div>
               </div>
             </div>
           </div>

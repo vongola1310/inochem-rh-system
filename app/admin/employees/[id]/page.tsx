@@ -18,15 +18,19 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from "@/components/ui/button"
+// Importamos el panel de gestión (Editar/Eliminar)
+import { EmployeeManagementPanel } from '@/components/admin/employee-management-panel'
 
 const prisma = new PrismaClient()
 
 export default async function EmployeeDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
+  // Verificación de rol: Solo RH puede ver detalles
   if ((session?.user as any)?.role !== 'HR') redirect('/')
 
   const { id } = await params
 
+  // Obtener datos completos del empleado
   const employee = await prisma.user.findUnique({
     where: { id },
     include: { 
@@ -40,16 +44,25 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
 
   if (!employee) return notFound()
 
+  // Obtener lista de posibles jefes para el formulario de edición
+  const allUsers = await prisma.user.findMany({
+    select: { id: true, name: true, jobTitle: true },
+    orderBy: { name: 'asc' }
+  })
+
+  // Cálculos de saldos
   const total = employee.balance?.totalDays || 0
   const used = employee.balance?.usedDays || 0
   const pending = employee.balance?.pendingDays || 0
   const available = total - used - pending
 
+  // Estadísticas
   const totalRequests = employee.requests.length
   const rejectedRequests = employee.requests.filter(r => r.status === 'REJECTED').length
   const approvedRequests = employee.requests.filter(r => r.status === 'APPROVED').length
   const approvalRate = totalRequests > 0 ? Math.round((approvedRequests / totalRequests) * 100) : 0
 
+  // Cálculo de antigüedad
   const months = differenceInMonths(new Date(), employee.entryDate)
   const years = Math.floor(months / 12)
   const remainingMonths = months % 12
@@ -57,6 +70,7 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
     ? `${years} ${years === 1 ? 'año' : 'años'}${remainingMonths > 0 ? ` y ${remainingMonths} meses` : ''}`
     : `${remainingMonths} meses`
 
+  // Iniciales para avatar
   const initials = employee.name
     .split(' ')
     .map(word => word.charAt(0))
@@ -64,6 +78,7 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
     .join('')
     .toUpperCase()
 
+  // Mapeo visual de tipos de solicitud
   const requestTypeMap: Record<string, { label: string; emoji: string; color: string }> = {
     VACATION: { label: 'Vacaciones', emoji: '🏖️', color: 'blue' },
     PERMIT_LATE: { label: 'Llegar Tarde', emoji: '⏰', color: 'amber' },
@@ -76,6 +91,7 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
   return (
     <div className="p-8 bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 min-h-screen">
       
+      {/* Header de Navegación */}
       <div className="mb-8">
         <Link href="/admin/users">
           <Button variant="outline" className="gap-2 mb-4 border-slate-300 hover:border-[#73C056] hover:bg-[#73C056]/5 transition-all">
@@ -84,21 +100,28 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
           </Button>
         </Link>
         
-        <div className="flex items-center gap-2 text-sm text-slate-500">
-          <span>Panel de RH</span>
-          <span>•</span>
-          <span>Directorio de Empleados</span>
-          <span>•</span>
-          <span className="text-[#73C056] font-semibold">Perfil Detallado</span>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-2 text-sm text-slate-500">
+                <span>Panel de RH</span>
+                <span>•</span>
+                <span>Directorio de Empleados</span>
+                <span>•</span>
+                <span className="text-[#73C056] font-semibold">Perfil Detallado</span>
+            </div>
+
+            {/* BOTONES DE GESTIÓN (EDITAR / ELIMINAR) */}
+            <EmployeeManagementPanel employee={employee} bosses={allUsers} />
         </div>
       </div>
 
+      {/* Tarjeta Principal del Empleado */}
       <Card className="mb-6 border-slate-200 shadow-lg overflow-hidden">
         <CardContent className="p-8">
           <div className="flex flex-col md:flex-row gap-8">
+            
+            {/* Avatar y Rol */}
             <div className="shrink-0 text-center md:text-left">
-              <Avatar className="h-32 w-32 mx-auto md:mx-0 border-4 border-black shadow-xl mb-4">
-                {/* CAMBIO AQUÍ: Fondo verde sólido y texto negro */}
+              <Avatar className="h-32 w-32 mx-auto md:mx-0 border-4 border-white shadow-xl mb-4">
                 <AvatarFallback className="bg-[#73C056] text-black text-3xl font-bold">
                   {initials}
                 </AvatarFallback>
@@ -109,6 +132,7 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
               </Badge>
             </div>
 
+            {/* Información Detallada */}
             <div className="flex-1">
               <h1 className="text-3xl font-bold text-slate-900 mb-2">{employee.name}</h1>
               <p className="text-lg text-slate-600 font-medium mb-4 flex items-center gap-2">
@@ -161,6 +185,7 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
               </div>
             </div>
 
+            {/* Widget de Saldo */}
             <div className="shrink-0">
               <div className={`
                 text-center p-6 rounded-xl border-4 shadow-lg
@@ -203,6 +228,7 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
         </CardContent>
       </Card>
 
+      {/* Tarjetas de Estadísticas */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
         <Card className="border-l-4 border-slate-400 shadow-md hover:shadow-lg transition-shadow">
           <CardContent className="p-6">
@@ -249,6 +275,7 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
         </Card>
       </div>
 
+      {/* Tabla de Historial */}
       <Card className="border-slate-200 shadow-lg">
         <CardHeader className="bg-gradient-to-r from-slate-50 to-blue-50/50 border-b-2 border-[#73C056]/30">
           <div className="flex items-center justify-between">
