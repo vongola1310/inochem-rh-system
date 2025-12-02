@@ -14,16 +14,12 @@ export function BalancesTable({ data, initialStart, initialEnd }: {
     data: any[], 
     initialStart: string, 
     initialEnd: string,
-    initialJob?: string // Lo dejamos opcional por compatibilidad
+    initialJob?: string 
 }) {
   const router = useRouter()
   
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
-  
-  // 1. FILTRO CLIENTE (Búsqueda inmediata por texto)
   const [searchTerm, setSearchTerm] = useState("")
-  
-  // 2. FILTRO SERVIDOR (Rango de fechas para el cálculo matemático)
   const [startDate, setStartDate] = useState(initialStart)
   const [endDate, setEndDate] = useState(initialEnd)
   const [isUpdating, setIsUpdating] = useState(false)
@@ -38,7 +34,6 @@ export function BalancesTable({ data, initialStart, initialEnd }: {
     setSelectedIds(newSelected)
   }
 
-  // Lógica de filtrado en tiempo real (Buscador)
   const filteredData = useMemo(() => {
     if (!searchTerm) return data
     const lowerTerm = searchTerm.toLowerCase()
@@ -58,25 +53,22 @@ export function BalancesTable({ data, initialStart, initialEnd }: {
     }
   }
 
-  // Acción para recalcular datos en el servidor
   const applyDateFilter = () => {
     setIsUpdating(true)
     const params = new URLSearchParams()
     if (startDate) params.set('start', startDate)
     if (endDate) params.set('end', endDate)
-    // No mandamos 'job' porque ahora la búsqueda es local e instantánea
     router.push(`/admin/reports?${params.toString()}`)
     setTimeout(() => setIsUpdating(false), 1000)
   }
 
-  // Preparar datos para Excel
   const dataToExport = useMemo(() => {
     const list = selectedIds.size > 0 
         ? filteredData.filter(item => selectedIds.has(item.id))
         : filteredData
 
-    // Quitamos el ID interno antes de exportar
-    return list.map(({ id, ...rest }) => rest)
+    // Limpiamos campos internos que no queremos en el Excel (id, _usedInPeriod)
+    return list.map(({ id, _usedInPeriod, ...rest }) => rest)
   }, [filteredData, selectedIds])
 
   return (
@@ -189,40 +181,46 @@ export function BalancesTable({ data, initialStart, initialEnd }: {
                 {filteredData.length === 0 ? (
                     <TableRow><TableCell colSpan={6} className="text-center h-40 text-slate-400 italic">No se encontraron empleados con esa búsqueda.</TableCell></TableRow>
                 ) : (
-                    filteredData.map((row) => (
-                    <TableRow 
-                        key={row.id} 
-                        className={`transition-colors border-b border-slate-50 last:border-0 ${selectedIds.has(row.id) ? "bg-blue-50/40 hover:bg-blue-50/60" : "hover:bg-slate-50"}`}
-                    >
-                        <TableCell className="text-center">
-                            <input 
-                                type="checkbox" 
-                                className="cursor-pointer h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 accent-blue-600"
-                                checked={selectedIds.has(row.id)}
-                                onChange={() => toggleSelection(row.id)}
-                            />
-                        </TableCell>
-                        <TableCell className="font-medium">
-                            <div className="flex flex-col">
-                                <span className="text-slate-900">{row["Nombre Completo"]}</span>
-                                <span className="text-[10px] text-slate-400 font-mono">ID: {row["No. Empleado"]}</span>
-                            </div>
-                        </TableCell>
-                        <TableCell className="text-xs text-slate-600">{row["Puesto"]}</TableCell>
-                        <TableCell className="text-xs text-slate-500">{row["Vigencia Actual"]}</TableCell>
-                        
-                        {/* Columna Dinámica (Calculada por fecha) */}
-                        <TableCell className="text-center font-medium bg-blue-50/30 text-blue-700 text-sm border-x border-blue-50">
-                            {String(Object.values(row)[8])} 
-                        </TableCell>
-                        
-                        <TableCell className="text-center">
-                            <Badge variant="outline" className={row["Saldo Disponible"] < 0 ? "text-red-600 bg-red-50 border-red-200" : "text-slate-700 bg-slate-50"}>
-                                {row["Saldo Disponible"]}
-                            </Badge>
-                        </TableCell>
-                    </TableRow>
-                    ))
+                    filteredData.map((row) => {
+                        // CORRECCIÓN CRÍTICA: BUSCAR LA COLUMNA POR NOMBRE
+                        // En lugar de row[8], buscamos la llave que empieza con "Vacaciones Tomadas"
+                        const takenKey = Object.keys(row).find(k => k.startsWith('Vacaciones Tomadas')) || 'Vacaciones Tomadas'
+                        const takenValue = row[takenKey]
+
+                        return (
+                        <TableRow 
+                            key={row.id} 
+                            className={`transition-colors border-b border-slate-50 last:border-0 ${selectedIds.has(row.id) ? "bg-blue-50/40 hover:bg-blue-50/60" : "hover:bg-slate-50"}`}
+                        >
+                            <TableCell className="text-center">
+                                <input 
+                                    type="checkbox" 
+                                    className="cursor-pointer h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 accent-blue-600"
+                                    checked={selectedIds.has(row.id)}
+                                    onChange={() => toggleSelection(row.id)}
+                                />
+                            </TableCell>
+                            <TableCell className="font-medium">
+                                <div className="flex flex-col">
+                                    <span className="text-slate-900">{row["Nombre Completo"]}</span>
+                                    <span className="text-[10px] text-slate-400 font-mono">ID: {row["No. Empleado"]}</span>
+                                </div>
+                            </TableCell>
+                            <TableCell className="text-xs text-slate-600">{row["Puesto"]}</TableCell>
+                            <TableCell className="text-xs text-slate-500">{row["Vigencia Actual"]}</TableCell>
+                            
+                            {/* Columna Dinámica (Ya no falla si cambia el orden) */}
+                            <TableCell className="text-center font-medium bg-blue-50/30 text-blue-700 text-sm border-x border-blue-50">
+                                {String(takenValue)}
+                            </TableCell>
+                            
+                            <TableCell className="text-center">
+                                <Badge variant="outline" className={row["Saldo Disponible"] < 0 ? "text-red-600 bg-red-50 border-red-200" : "text-slate-700 bg-slate-50"}>
+                                    {row["Saldo Disponible"]}
+                                </Badge>
+                            </TableCell>
+                        </TableRow>
+                    )})
                 )}
             </TableBody>
             </Table>
