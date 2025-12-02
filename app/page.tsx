@@ -8,7 +8,7 @@ import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from '@/components/ui/button'
-import { LogOut, Briefcase, Calendar, Users, FileText } from 'lucide-react'
+import { LogOut, Briefcase, Calendar, Users, FileText, UserCircle } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import Image from 'next/image'
 import Link from 'next/link'
@@ -26,8 +26,7 @@ export default async function Home() {
     redirect('/login')
   }
 
-  // 1. Renovación automática al entrar (Lazy Evaluation)
-  // Si hoy es el aniversario laboral del usuario, se le suman sus días antes de cargar la vista.
+  // 1. Renovación automática al entrar
   if (session.user.id) {
     await checkAndRenewBalance(session.user.id)
   }
@@ -42,7 +41,7 @@ export default async function Home() {
     }
   })
 
-  // 3. Obtener días festivos para el calendario de vacaciones
+  // 3. Obtener días festivos
   const holidaysRaw = await prisma.holiday.findMany({
     select: { date: true, name: true }
   })
@@ -52,8 +51,7 @@ export default async function Home() {
     date: h.date.toISOString()
   }))
 
-  // 4. Obtener lista de candidatos para respaldo (Jefe Interino)
-  // Excluimos al propio usuario (no puede ser su propio jefe) y opcionalmente a RH
+  // 4. Obtener lista para respaldo
   const potentialBackups = await prisma.user.findMany({
     where: { 
         id: { not: user?.id },
@@ -65,24 +63,17 @@ export default async function Home() {
 
   if (!user) return <div className="p-8 text-red-500">Error: Usuario no encontrado en base de datos.</div>
 
-  // --- CÁLCULOS DE SALDO Y VIGENCIA ---
-  
+  // --- CÁLCULOS ---
   const totalDays = user.balance?.totalDays || 0
   const usedDays = user.balance?.usedDays || 0
   const pendingDays = user.balance?.pendingDays || 0
-  
-  // Saldo Real Disponible = Total - (Gastados + Comprometidos)
   const availableDays = totalDays - usedDays - pendingDays
 
-  // Cálculo del ciclo de vigencia actual (Aniversario pasado - Próximo aniversario)
   const today = new Date()
   const entryDate = new Date(user.entryDate)
   const currentYear = today.getFullYear()
   
-  // Calculamos la fecha de aniversario de ESTE año
   let cycleStart = setYear(entryDate, currentYear)
-  
-  // Si hoy es ANTES del aniversario de este año, el ciclo empezó el año pasado
   if (isBefore(today, cycleStart)) {
     cycleStart = addYears(cycleStart, -1)
   }
@@ -90,7 +81,6 @@ export default async function Home() {
 
   const isManager = user.subordinates.length > 0;
   
-  // Iniciales para avatar
   const initials = user.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
 
   return (
@@ -99,17 +89,18 @@ export default async function Home() {
       <nav className="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-50 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-20">
-            {/* Logo */}
-            <div className="flex items-center gap-4">
-              <div className="relative h-12 w-40 shrink-0">
-                <div className="flex items-center gap-2">
-                    <div className="h-8 w-8 bg-slate-900 rounded flex items-center justify-center text-white font-bold">I</div>
-                    <span className="font-bold text-xl text-slate-900">Inochem</span>
-                </div>
-              </div>
-              <div className="hidden lg:block border-l border-slate-300 pl-4">
-                <h1 className="font-bold text-xl text-slate-900">Sistema RH</h1>
-                <p className="text-xs text-slate-500">Solicitud de Vacaciones</p>
+            
+            {/* LOGO SOLAMENTE (Sin texto adicional, ancho ajustado) */}
+            <div className="flex items-center">
+              <div className="relative h-14 w-80 shrink-0">
+                <Image 
+                  src="/logo.png" 
+                  alt="Inochem Logo" 
+                  fill
+                  className="object-contain object-left"
+                  priority
+                  sizes="(max-width: 768px) 200px, 320px"
+                />
               </div>
             </div>
             
@@ -120,7 +111,7 @@ export default async function Home() {
                 <p className="text-xs text-slate-600">{user.jobTitle}</p>
               </div>
               
-              {/* Botones Admin (Solo visibles para RH) */}
+              {/* Botones Admin (Solo RH) */}
               {(user as any).role === 'HR' && (
                 <div className="hidden md:flex items-center gap-2">
                   <Link href="/admin">
@@ -146,10 +137,9 @@ export default async function Home() {
                 </div>
               )}
               
-              {/* Botón Perfil (Avatar con enlace) */}
+              {/* Botón Perfil */}
               <Link href="/profile">
                 <Avatar className="h-10 w-10 border-2 border-white shadow-sm hover:ring-2 hover:ring-[#73C056] transition-all cursor-pointer">
-                    {/* Si en un futuro habilitas imágenes, aquí iría src={user.image} */}
                     <AvatarImage src="" className="object-cover" />
                     <AvatarFallback className="bg-slate-200 text-slate-600 font-bold">
                         {initials}
@@ -173,17 +163,15 @@ export default async function Home() {
         </div>
       </nav>
 
-      {/* DASHBOARD CONTENT */}
+      {/* DASHBOARD */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
         <div className="mb-6 lg:hidden">
           <h2 className="text-xl font-bold text-slate-900">Hola, {user.name?.split(' ')[0]} 👋</h2>
           <p className="text-sm text-slate-600">{user.jobTitle}</p>
         </div>
 
-        {/* TARJETAS DE RESUMEN */}
+        {/* Tarjetas */}
         <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 mb-6 lg:mb-8">
-          
-          {/* Tarjeta 1: Puesto */}
           <Card className="border-l-4 border-l-[#73C056] hover:shadow-lg transition-all hover:-translate-y-1">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
@@ -201,7 +189,6 @@ export default async function Home() {
             </CardContent>
           </Card>
           
-          {/* Tarjeta 2: Días Disponibles (Con Vigencia) */}
           <Card className="border-l-4 border-l-[#73C056] hover:shadow-lg transition-all hover:-translate-y-1">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
@@ -235,7 +222,6 @@ export default async function Home() {
             </CardContent>
           </Card>
 
-          {/* Tarjeta 3: Equipo */}
           <Card className="border-l-4 border-l-[#73C056] hover:shadow-lg transition-all hover:-translate-y-1 sm:col-span-2 lg:col-span-1">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
@@ -255,7 +241,6 @@ export default async function Home() {
           </Card>
         </div>
 
-        {/* GRID DE CONTENIDO PRINCIPAL */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
           {/* COLUMNA IZQUIERDA - FORMULARIOS Y GESTIÓN */}
           <div className="lg:col-span-7 xl:col-span-8 space-y-6">
@@ -277,8 +262,8 @@ export default async function Home() {
                     <FileText className="h-6 w-6 text-white" />
                   </div>
                   <div>
-                    <h2 className="text-xl sm:text-2xl font-bold text-white">Nueva Solicitud</h2>
-                    <p className="text-sm text-white/90">Completa el formulario correspondiente</p>
+                    <h2 className="text-xl sm:text-2xl font-bold text-black">Nueva Solicitud</h2>
+                    <p className="text-sm text-black/90">Completa el formulario correspondiente</p>
                   </div>
                 </div>
               </div>

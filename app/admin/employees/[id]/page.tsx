@@ -74,7 +74,7 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
   }
 
   return (
-    <div className="p-8 bg-linear-to-br from-slate-50 via-blue-50/30 to-slate-50 min-h-screen">
+    <div className="p-8 bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 min-h-screen">
       
       <div className="mb-8">
         <Link href="/admin/users">
@@ -97,8 +97,9 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
         <CardContent className="p-8">
           <div className="flex flex-col md:flex-row gap-8">
             <div className="shrink-0 text-center md:text-left">
-              <Avatar className="h-32 w-32 mx-auto md:mx-0 border-4 border-white shadow-xl mb-4">
-                <AvatarFallback className="bg-linear-to-br from-[#73C056] to-[#62a847] text-white text-3xl font-bold">
+              <Avatar className="h-32 w-32 mx-auto md:mx-0 border-4 border-black shadow-xl mb-4">
+                {/* CAMBIO AQUÍ: Fondo verde sólido y texto negro */}
+                <AvatarFallback className="bg-[#73C056] text-black text-3xl font-bold">
                   {initials}
                 </AvatarFallback>
               </Avatar>
@@ -192,7 +193,7 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
                     <span className="font-bold text-blue-600">-{used}</span>
                   </div>
                   <div className="flex justify-between text-xs">
-                    <span className="text-slate-600">Por autorizar:</span>
+                    <span className="text-slate-600">Pendientes:</span>
                     <span className="font-bold text-orange-600">-{pending}</span>
                   </div>
                 </div>
@@ -249,7 +250,7 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
       </div>
 
       <Card className="border-slate-200 shadow-lg">
-        <CardHeader className="bg-linear-to-r from-slate-50 to-blue-50/50 border-b-2 border-[#73C056]/30">
+        <CardHeader className="bg-gradient-to-r from-slate-50 to-blue-50/50 border-b-2 border-[#73C056]/30">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="h-12 w-12 rounded-xl bg-[#73C056]/10 flex items-center justify-center">
