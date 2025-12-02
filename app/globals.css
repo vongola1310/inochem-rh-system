@@ -72,7 +72,75 @@
     --sidebar-ring: 264.364 27% 55.1%;
   }
 }
+/* ===== ESTILOS PARA REACT-DAY-PICKER ===== */
+.rdp {
+  --rdp-accent-color: #73C056;
+  --rdp-background-color: #73C056;
+  --rdp-accent-background-color: rgba(115, 192, 86, 0.1);
+}
 
+/* Tabla del calendario */
+.rdp-month_grid {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+/* Encabezados de días (lu, ma, mi, etc) */
+.rdp-weekday {
+  width: 2.5rem;
+  height: 2.5rem;
+  text-align: center;
+  font-size: 0.875rem;
+  font-weight: 400;
+  color: rgb(100 116 139);
+  padding: 0;
+}
+
+/* Celdas de días */
+.rdp-day_button {
+  width: 2.5rem !important;
+  height: 2.5rem !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  justify-center: center;
+}
+
+/* Filas de la tabla */
+.rdp-week {
+  margin-top: 0.25rem;
+}
+
+/* Día seleccionado */
+.rdp-day_button[data-selected-single="true"] {
+  background-color: #73C056 !important;
+  color: white !important;
+  font-weight: 600;
+}
+
+/* Día deshabilitado */
+.rdp-day_button:disabled,
+.rdp-day_button[aria-disabled="true"] {
+  background-color: rgb(248 250 252) !important;
+  color: rgb(203 213 225) !important;
+  text-decoration: line-through;
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Día de hoy */
+.rdp-day_button[data-today="true"]:not([data-selected-single="true"]) {
+  background-color: rgb(241 245 249);
+  font-weight: 600;
+}
+
+/* Hover en días habilitados */
+.rdp-day_button:not(:disabled):not([aria-disabled="true"]):hover {
+  background-color: rgb(241 245 249) !important;
+}
 @layer base {
   * {
     @apply border-border;

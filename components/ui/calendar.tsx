@@ -188,6 +188,9 @@ function CalendarDayButton({
     if (modifiers.focused) ref.current?.focus()
   }, [modifiers.focused])
 
+  // Determinar si el día está deshabilitado
+  const isDisabled = modifiers.disabled
+
   return (
     <Button
       ref={ref}
@@ -204,7 +207,33 @@ function CalendarDayButton({
       data-range-end={modifiers.range_end}
       data-range-middle={modifiers.range_middle}
       className={cn(
-        "data-[selected-single=true]:bg-primary data-[selected-single=true]:text-primary-foreground data-[range-middle=true]:bg-accent data-[range-middle=true]:text-accent-foreground data-[range-start=true]:bg-primary data-[range-start=true]:text-primary-foreground data-[range-end=true]:bg-primary data-[range-end=true]:text-primary-foreground group-data-[focused=true]/day:border-ring group-data-[focused=true]/day:ring-ring/50 dark:hover:text-accent-foreground flex aspect-square size-auto w-full min-w-(--cell-size) flex-col gap-1 leading-none font-normal group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:ring-[3px] data-[range-end=true]:rounded-md data-[range-end=true]:rounded-r-md data-[range-middle=true]:rounded-none data-[range-start=true]:rounded-md data-[range-start=true]:rounded-l-md [&>span]:text-xs [&>span]:opacity-70",
+        // Estilos base
+        "flex aspect-square size-auto w-full min-w-(--cell-size) flex-col gap-1 leading-none font-normal",
+        
+        // Estilos para días seleccionados (SOLO si NO están deshabilitados)
+        !isDisabled && "data-[selected-single=true]:!bg-[#73C056] data-[selected-single=true]:!text-white data-[selected-single=true]:!font-semibold",
+        !isDisabled && "data-[range-start=true]:!bg-[#73C056] data-[range-start=true]:!text-white",
+        !isDisabled && "data-[range-end=true]:!bg-[#73C056] data-[range-end=true]:!text-white",
+        !isDisabled && "data-[range-middle=true]:bg-accent data-[range-middle=true]:text-accent-foreground",
+        
+        // Hover solo para días NO deshabilitados
+        !isDisabled && "hover:bg-slate-100",
+        
+        // ESTILOS PARA DÍAS DESHABILITADOS
+        isDisabled && "!bg-slate-50 !text-slate-300 line-through !opacity-50 !cursor-not-allowed pointer-events-none",
+        
+        // Focus styles
+        "group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10",
+        !isDisabled && "group-data-[focused=true]/day:border-ring group-data-[focused=true]/day:ring-ring/50 group-data-[focused=true]/day:ring-[3px]",
+        
+        // Rounded corners
+        "data-[range-end=true]:rounded-md data-[range-end=true]:rounded-r-md",
+        "data-[range-middle=true]:rounded-none",
+        "data-[range-start=true]:rounded-md data-[range-start=true]:rounded-l-md",
+        
+        // Span styles
+        "[&>span]:text-xs [&>span]:opacity-70",
+        
         defaultClassNames.day,
         className
       )}
