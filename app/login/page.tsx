@@ -1,5 +1,4 @@
 import { signIn } from '@/auth'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -7,6 +6,8 @@ import { AuthError } from 'next-auth'
 import { redirect } from 'next/navigation'
 import Image from 'next/image'
 import { Mail, Lock, AlertCircle } from 'lucide-react'
+// 1. IMPORTAMOS EL NUEVO BOTÓN
+import { LoginButton } from '@/components/auth/login-button'
 
 export default async function LoginPage({ 
   searchParams 
@@ -124,13 +125,9 @@ export default async function LoginPage({
               </div>
             )}
 
-            {/* Submit Button */}
-            <Button 
-              type="submit" 
-              className="w-full h-12 bg-[#73C056] hover:bg-[#62a847] text-white font-semibold text-base transition-all duration-200 shadow-md hover:shadow-lg mt-6"
-            >
-              Iniciar Sesión
-            </Button>
+            {/* 2. REEMPLAZAMOS EL BOTÓN NORMAL POR EL COMPONENTE CLIENTE */}
+            <LoginButton />
+            
           </form>
 
           {/* Footer */}
