@@ -226,7 +226,7 @@ export function VacationRequestForm({
                 <p className="text-lg font-bold text-slate-600">{breakdown.weekends}</p>
               </div>
               <div className="bg-white rounded p-2 border border-slate-200">
-                <p className="text-xs text-slate-500 mb-1"> días festivos</p>
+                <p className="text-xs text-slate-500 mb-1"> Días festivos</p>
                 <p className="text-lg font-bold text-slate-600">{breakdown.holidays}</p>
               </div>
             </div>
