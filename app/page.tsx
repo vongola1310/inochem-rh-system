@@ -192,7 +192,7 @@ export default async function Home() {
           <Card className="border-l-4 border-l-[#73C056] hover:shadow-lg transition-all hover:-translate-y-1">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-medium text-slate-600">Días Disponibles</CardTitle>
+                <CardTitle className="text-sm font-medium text-slate-600">Días Disponibles de vacaciones</CardTitle>
                 <div className="h-10 w-10 rounded-full bg-[#73C056]/10 flex items-center justify-center shrink-0">
                   <Calendar className="h-5 w-5 text-[#73C056]" />
                 </div>
