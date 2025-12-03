@@ -141,7 +141,7 @@ export function VacationRequestForm({
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-start gap-2">
         <Info className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
         <p className="text-sm text-blue-800">
-          Solo se contabilizan <strong>días hábiles</strong>. Los fines de semana y días festivos no se descuentan de tu saldo.
+          Solo se contabilizan <strong>días hábiles</strong>. Los fines de semana y días festivos no se descuentan de tu periodo vacacional.
         </p>
       </div>
       
