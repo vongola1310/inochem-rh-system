@@ -2,41 +2,25 @@
 
 import dynamic from 'next/dynamic'
 import { Button } from '@/components/ui/button'
-import { FileDown, Loader2 } from 'lucide-react'
-import { RequestDocument } from './request-document'
+import { Loader2 } from 'lucide-react'
 
-// CORRECCIÓN: Usamos 'as any' para evitar el conflicto de tipos de TypeScript
-const PDFDownloadLink = dynamic(
-  () => import('@react-pdf/renderer').then((mod) => mod.PDFDownloadLink as any),
-  { 
-    ssr: false, 
-    loading: () => (
-      <Button variant="outline" disabled>
-        <Loader2 className="w-4 h-4 mr-2 animate-spin"/> 
-        Preparando...
-      </Button>
-    ) 
-  }
-) as any
+// Importamos NUESTRO componente wrapper dinámicamente.
+// Esto aísla completamente @react-pdf/renderer del proceso de renderizado inicial del servidor.
+// ssr: false es CRÍTICO aquí.
+const PDFWrapper = dynamic(() => import('./pdf-wrapper'), {
+  ssr: false, 
+  loading: () => (
+    <Button variant="outline" disabled className="border-slate-300 text-slate-400 gap-2">
+      <Loader2 className="w-4 h-4 animate-spin"/>
+      Cargando módulo PDF...
+    </Button>
+  )
+})
 
 export function DownloadButton({ data }: { data: any }) {
-  // Limpiamos el nombre del archivo para que no tenga espacios raros
+  // Preparamos el nombre del archivo limpio (sin caracteres raros)
   const safeName = data.user.name.replace(/[^a-zA-Z0-9]/g, '_')
   const fileName = `Inochem_${data.type}_${safeName}.pdf`
 
-  return (
-    <PDFDownloadLink document={<RequestDocument data={data} />} fileName={fileName}>
-      {/* @ts-ignore */}
-      {({ loading }) => (
-        <Button variant="outline" className="border-slate-300 hover:bg-slate-50 text-slate-700">
-          {loading ? (
-            <Loader2 className="w-4 h-4 mr-2 animate-spin"/>
-          ) : (
-            <FileDown className="w-4 h-4 mr-2"/>
-          )}
-          Descargar PDF Oficial
-        </Button>
-      )}
-    </PDFDownloadLink>
-  )
+  return <PDFWrapper data={data} fileName={fileName} />
 }

@@ -16,12 +16,13 @@ import { BalancesTable } from '@/components/admin/reports/balances-table'
 export default async function ReportsPage({ 
   searchParams 
 }: { 
-  searchParams: Promise<{ start?: string, end?: string, job?: string }> 
+  searchParams: { start?: string, end?: string, job?: string } 
 }) {
   const session = await auth()
   if ((session?.user as any)?.role !== 'HR') redirect('/')
 
-  const params = await searchParams
+  // En Next.js 14 searchParams es un objeto directo, no una promesa
+  const params = searchParams
 
   const today = new Date().toISOString().split('T')[0]
   const startOfYear = new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0]
@@ -34,7 +35,7 @@ export default async function ReportsPage({
   const movementsData = await getMovementReport(startDate, endDate)
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-slate-50 via-slate-100 to-slate-50 p-4 sm:p-6 lg:p-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-50 p-4 sm:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto">
         
         {/* Botón de Regreso */}
@@ -94,7 +95,7 @@ export default async function ReportsPage({
                   <div>
                     <p className="text-sm text-slate-500 mb-1">Periodo Activo</p>
                     <p className="text-lg font-bold text-slate-900 truncate">
-                      {new Date(startDate).toLocaleDateString('es-MX', { month: 'short', day: 'numeric' })} - {new Date(endDate).toLocaleDateString('es-MX', { month: 'short', day: 'numeric' })}
+                      {new Date(startDate + 'T12:00:00Z').toLocaleDateString('es-MX', { month: 'short', day: 'numeric' })} - {new Date(endDate + 'T12:00:00Z').toLocaleDateString('es-MX', { month: 'short', day: 'numeric' })}
                     </p>
                   </div>
                   <Filter className="h-8 w-8 text-amber-500" />
@@ -128,7 +129,7 @@ export default async function ReportsPage({
           {/* PESTAÑA 1: SALDOS */}
           <TabsContent value="balances">
             <Card className="shadow-lg border-slate-200">
-              <CardHeader className="bg-linear-to-r from-slate-50 to-white border-b border-slate-200">
+              <CardHeader className="bg-gradient-to-r from-slate-50 to-white border-b border-slate-200">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div>
                     <CardTitle className="text-slate-900 flex items-center gap-2">
@@ -158,7 +159,7 @@ export default async function ReportsPage({
           {/* PESTAÑA 2: MOVIMIENTOS */}
           <TabsContent value="movements">
             <Card className="shadow-lg border-slate-200">
-              <CardHeader className="bg-linear-to-r from-slate-50 to-white border-b border-slate-200">
+              <CardHeader className="bg-gradient-to-r from-slate-50 to-white border-b border-slate-200">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div>
                     <CardTitle className="text-slate-900 flex items-center gap-2">
@@ -232,9 +233,9 @@ export default async function ReportsPage({
                         {movementsData.length === 0 ? (
                           <TableRow>
                             <TableCell colSpan={5} className="h-32 text-center">
-                              <div className="flex flex-col items-center gap-2">
+                              <div className="flex flex-col items-center justify-center gap-2 text-slate-400">
                                 <CalendarRange className="h-10 w-10 text-slate-300" />
-                                <p className="text-slate-500 font-medium">Sin movimientos en este periodo</p>
+                                <p className="font-medium">Sin movimientos en este periodo</p>
                                 <p className="text-sm text-slate-400">Ajusta los filtros de fecha</p>
                               </div>
                             </TableCell>

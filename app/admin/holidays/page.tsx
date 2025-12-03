@@ -95,8 +95,8 @@ export default async function HolidaysPage() {
                     <CalendarPlus className="h-5 w-5" />
                   </div>
                   <div>
-                    <CardTitle className="text-white">Agregar Festivo</CardTitle>
-                    <CardDescription className="text-white/90 text-sm">
+                    <CardTitle className="text-black">Agregar Festivo</CardTitle>
+                    <CardDescription className="text-black/90 text-sm">
                       Nuevo día inhábil
                     </CardDescription>
                   </div>

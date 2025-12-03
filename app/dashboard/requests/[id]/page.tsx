@@ -63,8 +63,8 @@ function calculateDaysBreakdown(
   return result
 }
 
-export default async function RequestDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params
+export default async function RequestDetailPage({ params }: { params: { id: string } }) {
+  const { id } = params
 
   const request = await prisma.request.findUnique({
     where: { id },

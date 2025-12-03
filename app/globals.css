@@ -4,144 +4,50 @@
 
 @layer base {
   :root {
-    --radius: 0.625rem;
     --background: 0 0% 100%;
-    --foreground: 264.695 42% 12.9%;
+    --foreground: 222.2 84% 4.9%;
     --card: 0 0% 100%;
-    --card-foreground: 264.695 42% 12.9%;
+    --card-foreground: 222.2 84% 4.9%;
     --popover: 0 0% 100%;
-    --popover-foreground: 264.695 42% 12.9%;
-    --primary: 265.755 42% 20.8%;
-    --primary-foreground: 247.858 3% 98.4%;
-    --secondary: 247.896 7% 96.8%;
-    --secondary-foreground: 265.755 42% 20.8%;
-    --muted: 247.896 7% 96.8%;
-    --muted-foreground: 257.417 46% 55.4%;
-    --accent: 247.896 7% 96.8%;
-    --accent-foreground: 265.755 42% 20.8%;
-    --destructive: 27.325 245% 57.7%;
-    --border: 255.508 13% 92.9%;
-    --input: 255.508 13% 92.9%;
-    --ring: 256.788 40% 70.4%;
-    --chart-1: 41.116 222% 64.6%;
-    --chart-2: 184.704 118% 60%;
-    --chart-3: 227.392 70% 39.8%;
-    --chart-4: 84.429 189% 82.8%;
-    --chart-5: 70.08 188% 76.9%;
-    --sidebar: 247.858 3% 98.4%;
-    --sidebar-foreground: 264.695 42% 12.9%;
-    --sidebar-primary: 265.755 42% 20.8%;
-    --sidebar-primary-foreground: 247.858 3% 98.4%;
-    --sidebar-accent: 247.896 7% 96.8%;
-    --sidebar-accent-foreground: 265.755 42% 20.8%;
-    --sidebar-border: 255.508 13% 92.9%;
-    --sidebar-ring: 256.788 40% 70.4%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+    --radius: 0.5rem;
   }
-
+ 
   .dark {
-    --background: 264.695 42% 12.9%;
-    --foreground: 247.858 3% 98.4%;
-    --card: 265.755 42% 20.8%;
-    --card-foreground: 247.858 3% 98.4%;
-    --popover: 265.755 42% 20.8%;
-    --popover-foreground: 247.858 3% 98.4%;
-    --primary: 255.508 13% 92.9%;
-    --primary-foreground: 265.755 42% 20.8%;
-    --secondary: 260.031 41% 27.9%;
-    --secondary-foreground: 247.858 3% 98.4%;
-    --muted: 260.031 41% 27.9%;
-    --muted-foreground: 256.788 40% 70.4%;
-    --accent: 260.031 41% 27.9%;
-    --accent-foreground: 247.858 3% 98.4%;
-    --destructive: 22.216 191% 70.4%;
-    --border: 0 0% 100% / 0.1;
-    --input: 0 0% 100% / 0.15;
-    --ring: 264.364 27% 55.1%;
-    --chart-1: 264.376 243% 48.8%;
-    --chart-2: 162.48 170% 69.6%;
-    --chart-3: 70.08 188% 76.9%;
-    --chart-4: 303.9 265% 62.7%;
-    --chart-5: 16.439 246% 64.5%;
-    --sidebar: 265.755 42% 20.8%;
-    --sidebar-foreground: 247.858 3% 98.4%;
-    --sidebar-primary: 264.376 243% 48.8%;
-    --sidebar-primary-foreground: 247.858 3% 98.4%;
-    --sidebar-accent: 260.031 41% 27.9%;
-    --sidebar-accent-foreground: 247.858 3% 98.4%;
-    --sidebar-border: 0 0% 100% / 0.1;
-    --sidebar-ring: 264.364 27% 55.1%;
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
   }
-}
-/* ===== ESTILOS PARA REACT-DAY-PICKER ===== */
-.rdp {
-  --rdp-accent-color: #73C056;
-  --rdp-background-color: #73C056;
-  --rdp-accent-background-color: rgba(115, 192, 86, 0.1);
-}
 
-/* Tabla del calendario */
-.rdp-month_grid {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-/* Encabezados de días (lu, ma, mi, etc) */
-.rdp-weekday {
-  width: 2.5rem;
-  height: 2.5rem;
-  text-align: center;
-  font-size: 0.875rem;
-  font-weight: 400;
-  color: rgb(100 116 139);
-  padding: 0;
-}
-
-/* Celdas de días */
-.rdp-day_button {
-  width: 2.5rem !important;
-  height: 2.5rem !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  font-size: 0.875rem;
-  display: flex;
-  align-items: center;
-  justify-center: center;
-}
-
-/* Filas de la tabla */
-.rdp-week {
-  margin-top: 0.25rem;
-}
-
-/* Día seleccionado */
-.rdp-day_button[data-selected-single="true"] {
-  background-color: #73C056 !important;
-  color: white !important;
-  font-weight: 600;
-}
-
-/* Día deshabilitado */
-.rdp-day_button:disabled,
-.rdp-day_button[aria-disabled="true"] {
-  background-color: rgb(248 250 252) !important;
-  color: rgb(203 213 225) !important;
-  text-decoration: line-through;
-  opacity: 0.5;
-  cursor: not-allowed;
-  pointer-events: none;
-}
-
-/* Día de hoy */
-.rdp-day_button[data-today="true"]:not([data-selected-single="true"]) {
-  background-color: rgb(241 245 249);
-  font-weight: 600;
-}
-
-/* Hover en días habilitados */
-.rdp-day_button:not(:disabled):not([aria-disabled="true"]):hover {
-  background-color: rgb(241 245 249) !important;
-}
-@layer base {
   * {
     @apply border-border;
   }
