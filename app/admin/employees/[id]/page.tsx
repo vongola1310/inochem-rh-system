@@ -154,7 +154,7 @@ export default async function EmployeeDetailPage({ params }: { params: { id: str
                       <Mail className="h-5 w-5 text-blue-600" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-xs font-semibold text-slate-500 uppercase">Email</p>
+                      <p className="text-xs font-semibold text-slate-500 uppercase">Correo electronico</p>
                       <p className="text-sm text-slate-900 font-medium truncate">{employee.email}</p>
                     </div>
                   </div>
@@ -214,11 +214,11 @@ export default async function EmployeeDetailPage({ params }: { params: { id: str
                     {available}
                   </div>
                   <p className="text-sm font-bold text-slate-700 mb-3">
-                    {available === 1 ? 'Día Disponible' : 'Días Disponibles'}
+                    {available === 1 ? 'Día disponible' : 'Días disponibles'}
                   </p>
                   <div className="space-y-1 pt-3 border-t border-slate-300/50">
                     <div className="flex justify-between text-xs gap-4">
-                      <span className="text-slate-600">Total Anual:</span>
+                      <span className="text-slate-600">Total anual:</span>
                       <span className="font-bold text-slate-800">{total}</span>
                     </div>
                     <div className="flex justify-between text-xs gap-4">
@@ -226,7 +226,7 @@ export default async function EmployeeDetailPage({ params }: { params: { id: str
                       <span className="font-bold text-blue-600">-{used}</span>
                     </div>
                     <div className="flex justify-between text-xs gap-4">
-                      <span className="text-slate-600">Pendientes:</span>
+                      <span className="text-slate-600">Por aprobar:</span>
                       <span className="font-bold text-orange-600">-{pending}</span>
                     </div>
                   </div>
@@ -241,7 +241,7 @@ export default async function EmployeeDetailPage({ params }: { params: { id: str
           <Card className="border-l-4 border-slate-400 shadow-sm">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-3">
-                <p className="text-sm font-semibold text-slate-600">Total Solicitudes</p>
+                <p className="text-sm font-semibold text-slate-600">Total de solicitudes</p>
                 <FileText className="h-5 w-5 text-slate-400" />
               </div>
               <p className="text-3xl font-bold text-slate-900">{totalRequests}</p>
@@ -271,7 +271,7 @@ export default async function EmployeeDetailPage({ params }: { params: { id: str
           <Card className="border-l-4 border-blue-500 shadow-sm">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-3">
-                <p className="text-sm font-semibold text-slate-600">Tasa de Éxito</p>
+                <p className="text-sm font-semibold text-slate-600">Tasa de éxito</p>
                 <BarChart3 className="h-5 w-5 text-blue-500" />
               </div>
               <p className="text-3xl font-bold text-blue-600">{approvalRate}%</p>
@@ -287,7 +287,7 @@ export default async function EmployeeDetailPage({ params }: { params: { id: str
                 <FileText className="h-6 w-6 text-[#73C056]" />
               </div>
               <div>
-                <CardTitle className="text-xl text-slate-900">Historial de Movimientos</CardTitle>
+                <CardTitle className="text-xl text-slate-900">Historial de movimientos</CardTitle>
                 <CardDescription>
                   Registro completo de {totalRequests} {totalRequests === 1 ? 'solicitud' : 'solicitudes'}
                 </CardDescription>
@@ -305,7 +305,7 @@ export default async function EmployeeDetailPage({ params }: { params: { id: str
                     <TableHead className="font-bold text-slate-700 text-center">Duración</TableHead>
                     <TableHead className="font-bold text-slate-700">Estado</TableHead>
                     <TableHead className="font-bold text-slate-700">Notas</TableHead>
-                    <TableHead className="font-bold text-slate-700 text-right">Acciones</TableHead>
+                    <TableHead className="font-bold text-slate-700 text-right">Ver solicitud</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

@@ -131,7 +131,7 @@ export async function EmployeesTable() {
                 </div>
               </TableHead>
               <TableHead className="text-right font-semibold text-slate-700">
-                Acciones
+                Ver perfil
               </TableHead>
             </TableRow>
           </TableHeader>

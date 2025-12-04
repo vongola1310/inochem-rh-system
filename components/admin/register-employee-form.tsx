@@ -7,10 +7,11 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { registerEmployee } from '@/app/actions/register-employee'
 import { toast } from "sonner"
-import { UserPlus, Mail, Briefcase, Calendar, Shield, Users, Hash, Send, Calculator, Check, ChevronsUpDown } from 'lucide-react'
+import { UserPlus, Mail, Briefcase, Calendar, Shield, Users, Hash, Send, Calculator, Check, ChevronsUpDown, Cake } from 'lucide-react'
 import { differenceInYears } from 'date-fns'
 import { cn } from "@/lib/utils"
 
+// Usamos los componentes oficiales de Shadcn para el buscador
 import {
   Command,
   CommandEmpty,
@@ -27,6 +28,7 @@ import {
 
 type SimpleUser = { id: string; name: string; jobTitle: string | null }
 
+// Función auxiliar para sugerir días de vacaciones (Ley + Bono)
 function suggestVacationDays(entryDateStr: string): number {
   if (!entryDateStr) return 0
   const years = differenceInYears(new Date(), new Date(entryDateStr))
@@ -53,7 +55,7 @@ export function RegisterEmployeeForm({ possibleBosses }: { possibleBosses: Simpl
   const [loading, setLoading] = useState(false)
   const [selectedRole, setSelectedRole] = useState('EMPLOYEE')
   
-  // ESTADOS PARA EL BUSCADOR
+  // Estados para el Combobox (Buscador de Jefes)
   const [openCombobox, setOpenCombobox] = useState(false)
   const [selectedBossId, setSelectedBossId] = useState("")
 
@@ -63,6 +65,7 @@ export function RegisterEmployeeForm({ possibleBosses }: { possibleBosses: Simpl
   const [days, setDays] = useState(0)
   const [isAutoCalculated, setIsAutoCalculated] = useState(true)
 
+  // Efecto para calcular vacaciones al cambiar fecha de ingreso
   useEffect(() => {
     if (entryDate && isAutoCalculated) {
       const suggested = suggestVacationDays(entryDate)
@@ -82,7 +85,7 @@ export function RegisterEmployeeForm({ possibleBosses }: { possibleBosses: Simpl
       setEntryDate("")
       setDays(0)
       setIsAutoCalculated(true)
-      setSelectedBossId("") 
+      setSelectedBossId("")
     } else {
       toast.error("Error al Registrar", { description: res.message })
     }
@@ -103,6 +106,7 @@ export function RegisterEmployeeForm({ possibleBosses }: { possibleBosses: Simpl
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Número de Empleado */}
         <div className="space-y-2">
           <Label className="text-slate-700 font-medium flex items-center gap-1.5">
             <Hash className="h-3.5 w-3.5 text-[#73C056]" /> Número de Empleado <span className="text-red-500">*</span>
@@ -110,6 +114,7 @@ export function RegisterEmployeeForm({ possibleBosses }: { possibleBosses: Simpl
           <Input name="employeeNumber" placeholder="Ej: 1045" required className="border-slate-300 focus:border-[#73C056]" />
         </div>
 
+        {/* Nombre */}
         <div className="space-y-2">
           <Label className="text-slate-700 font-medium flex items-center gap-1.5">
             <Users className="h-3.5 w-3.5 text-[#73C056]" /> Nombre Completo <span className="text-red-500">*</span>
@@ -117,6 +122,7 @@ export function RegisterEmployeeForm({ possibleBosses }: { possibleBosses: Simpl
           <Input name="name" placeholder="Ej: Ana López García" required className="border-slate-300 focus:border-[#73C056]" />
         </div>
 
+        {/* Email */}
         <div className="space-y-2">
           <Label className="text-slate-700 font-medium flex items-center gap-1.5">
             <Mail className="h-3.5 w-3.5 text-[#73C056]" /> Correo Corporativo <span className="text-red-500">*</span>
@@ -124,13 +130,15 @@ export function RegisterEmployeeForm({ possibleBosses }: { possibleBosses: Simpl
           <Input name="email" type="email" placeholder="ana.lopez@empresa.com" required className="border-slate-300 focus:border-[#73C056]" />
         </div>
 
+        {/* Puesto */}
         <div className="space-y-2">
           <Label className="text-slate-700 font-medium flex items-center gap-1.5">
-            <Briefcase className="h-3.5 w-3.5 text-[#73C056]" /> Puesto / Cargo <span className="text-red-500">*</span>
+            <Briefcase className="h-3.5 w-3.5 text-[#73C056]" /> Puesto <span className="text-red-500">*</span>
           </Label>
           <Input name="jobTitle" placeholder="Ej: Analista de Calidad" required className="border-slate-300 focus:border-[#73C056]" />
         </div>
 
+        {/* Fecha de Ingreso */}
         <div className="space-y-2">
           <Label className="text-slate-700 font-medium flex items-center gap-1.5">
             <Calendar className="h-3.5 w-3.5 text-[#73C056]" /> Fecha de Ingreso <span className="text-red-500">*</span>
@@ -148,6 +156,20 @@ export function RegisterEmployeeForm({ possibleBosses }: { possibleBosses: Simpl
           )}
         </div>
 
+        {/* Fecha de Nacimiento (NUEVO CAMPO) */}
+        <div className="space-y-2">
+          <Label className="text-slate-700 font-medium flex items-center gap-1.5">
+            <Cake className="h-3.5 w-3.5 text-pink-500" /> Fecha de Nacimiento
+          </Label>
+          <Input 
+            name="birthDate" 
+            type="date" 
+            className="border-slate-300 focus:border-[#73C056]"
+          />
+          <p className="text-xs text-slate-500">Para automatizar permiso de cumpleaños.</p>
+        </div>
+
+        {/* Saldo de Vacaciones */}
         <div className="space-y-2">
           <Label className="text-slate-700 font-medium flex items-center gap-1.5">
             <Calculator className="h-3.5 w-3.5 text-blue-600" /> Saldo de Vacaciones <span className="text-red-500">*</span>
@@ -166,6 +188,7 @@ export function RegisterEmployeeForm({ possibleBosses }: { possibleBosses: Simpl
           </div>
         </div>
 
+        {/* Rol */}
         <div className="space-y-2">
           <Label className="text-slate-700 font-medium flex items-center gap-1.5">
             <Shield className="h-3.5 w-3.5 text-[#73C056]" /> Rol en el Sistema <span className="text-red-500">*</span>
@@ -180,7 +203,7 @@ export function RegisterEmployeeForm({ possibleBosses }: { possibleBosses: Simpl
           </Select>
         </div>
 
-        {/* ASIGNACIÓN DE JEFE */}
+        {/* ASIGNACIÓN DE JEFE - COMBOBOX CON BUSCADOR */}
         <div className="space-y-2 md:col-span-2">
           <Label className="text-slate-700 font-medium flex items-center gap-1.5">
             <Users className="h-3.5 w-3.5 text-[#73C056]" /> Jefe Inmediato
@@ -198,7 +221,7 @@ export function RegisterEmployeeForm({ possibleBosses }: { possibleBosses: Simpl
                 className="w-full justify-between border-slate-300 text-slate-700 font-normal hover:border-[#73C056] hover:bg-white active:scale-[0.99] transition-all"
               >
                 {selectedBossId
-                  ? selectedBossId === "none" 
+                  ? selectedBossId === "none"
                     ? "-- Sin Jefe (Director) --"
                     : possibleBosses.find((boss) => boss.id === selectedBossId)?.name
                   : "Buscar empleado por nombre..."}
@@ -218,8 +241,7 @@ export function RegisterEmployeeForm({ possibleBosses }: { possibleBosses: Simpl
                         setSelectedBossId("none")
                         setOpenCombobox(false)
                       }}
-                      // AQUÍ ESTÁ EL TRUCO: Forzamos opacidad y puntero
-                      className="cursor-pointer hover:bg-slate-100 aria-selected:bg-slate-100 opacity-100! pointer-events-auto! py-2.5 px-3 mb-1"
+                      className="cursor-pointer hover:bg-slate-100 aria-selected:bg-slate-100 !opacity-100 !pointer-events-auto py-2.5 px-3 mb-1"
                     >
                       <Check className={cn("mr-2 h-4 w-4 text-[#73C056]", selectedBossId === "none" ? "opacity-100" : "opacity-0")} />
                       <span className="text-slate-500 italic">-- Sin Jefe (Director) --</span>
@@ -233,8 +255,7 @@ export function RegisterEmployeeForm({ possibleBosses }: { possibleBosses: Simpl
                           setSelectedBossId(boss.id)
                           setOpenCombobox(false)
                         }}
-                        // AQUÍ TAMBIÉN: Forzamos estilos activos
-                        className="cursor-pointer hover:bg-blue-50 aria-selected:bg-blue-50 opacity-100! pointer-events-auto! py-2.5 px-3 mb-0.5 rounded-sm transition-colors"
+                        className="cursor-pointer hover:bg-blue-50 aria-selected:bg-blue-50 !opacity-100 !pointer-events-auto py-2.5 px-3 mb-0.5 rounded-sm transition-colors"
                       >
                         <Check className={cn("mr-2 h-4 w-4 text-[#73C056]", selectedBossId === boss.id ? "opacity-100" : "opacity-0")} />
                         <div className="flex flex-col">

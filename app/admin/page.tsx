@@ -162,9 +162,9 @@ export default async function AdminDashboard() {
         <TabsContent value="pending">
           <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
             <div className="p-4 border-b border-slate-200 bg-linear-to-r from-slate-50 to-white">
-              <h3 className="font-semibold text-slate-900">Solicitudes Pendientes de Validación</h3>
+              <h3 className="font-semibold text-slate-900">Solicitudes pendientes de validación</h3>
               <p className="text-sm text-slate-500 mt-1">
-                Mostrando solo Vacaciones y Cumpleaños (Los permisos simples se aprueban automáticamente)
+                Los permisos son aprobados unicamente por el lider, excepto los de cumpleaños.
               </p>
             </div>
             

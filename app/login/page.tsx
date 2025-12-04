@@ -44,7 +44,7 @@ export default async function LoginPage({
             </CardTitle>
            
             <CardDescription className="text-slate-600 text-base">
-              Sistema de Solicitud y seguimiento de Vacaciones<br />euroimmun México
+              Sistema de solicitud de vacaciones y permisos<br />Euroimmun México
             </CardDescription>
           </div>
         </CardHeader>
