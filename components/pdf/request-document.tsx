@@ -4,167 +4,113 @@ import { Page, Text, View, Document, StyleSheet, Image } from '@react-pdf/render
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
-// ESTILOS DE ALTA PRECISIÓN
+// ESTILOS DE ALTA PRECISIÓN (HOJA CARTA COMPLETA)
 const styles = StyleSheet.create({
   page: { 
-    paddingTop: 30,
-    paddingBottom: 30,
+    paddingTop: 40,
+    paddingBottom: 40,
     paddingLeft: 40,
     paddingRight: 40,
     fontSize: 9, 
     fontFamily: 'Helvetica',
-    color: '#000'
+    color: '#000',
+    flexDirection: 'column',
   },
   
-  // === NUEVO HEADER EXACTO (TABLA 3 COLUMNAS) ===
+  // HEADER (TABLA 3 COLUMNAS)
   headerTable: {
     flexDirection: 'row',
     borderWidth: 1,
     borderColor: '#000',
-    marginBottom: 20,
-    height: 50 // Altura fija para controlar proporciones
+    marginBottom: 30,
+    height: 60
   },
   
-  // Columna 1: Logo y Vigencia
-  col1: {
-    width: '25%',
-    borderRightWidth: 1,
-    borderColor: '#000',
-    flexDirection: 'column'
-  },
-  logoContainer: {
-    height: '65%', // El logo ocupa la parte superior
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderColor: '#000'
-  },
-  vigenciaContainer: {
-    height: '35%',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#fff'
-  },
+  col1: { width: '25%', borderRightWidth: 1, borderColor: '#000', flexDirection: 'column' },
+  logoContainer: { height: '70%', justifyContent: 'center', alignItems: 'center', borderBottomWidth: 1, borderColor: '#000', padding: 2 },
+  vigenciaContainer: { height: '30%', justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' },
 
-  // Columna 2: Proceso, Título, Revisión
-  col2: {
-    width: '50%',
-    borderRightWidth: 1,
-    borderColor: '#000',
-    flexDirection: 'column'
-  },
-  rowProceso: {
-    height: '25%',
-    borderBottomWidth: 1,
-    borderColor: '#000',
-    justifyContent: 'center',
-    alignItems: 'center'
-  },
-  rowTitulo: {
-    height: '50%', // Título más grande
-    borderBottomWidth: 1,
-    borderColor: '#000',
-    justifyContent: 'center',
-    alignItems: 'center'
-  },
-  rowRevision: {
-    height: '25%',
-    justifyContent: 'center',
-    alignItems: 'center'
-  },
+  col2: { width: '50%', borderRightWidth: 1, borderColor: '#000', flexDirection: 'column' },
+  rowProceso: { height: '25%', borderBottomWidth: 1, borderColor: '#000', justifyContent: 'center', alignItems: 'center' },
+  rowTitulo: { height: '50%', borderBottomWidth: 1, borderColor: '#000', justifyContent: 'center', alignItems: 'center' },
+  rowRevision: { height: '25%', justifyContent: 'center', alignItems: 'center' },
 
-  // Columna 3: Código, Página, Versión
-  col3: {
-    width: '25%',
-    flexDirection: 'column'
-  },
-  rowCodigo: {
-    height: '33.33%',
-    borderBottomWidth: 1,
-    borderColor: '#000',
-    justifyContent: 'center',
-    paddingLeft: 5
-  },
-  rowPagina: {
-    height: '33.33%',
-    borderBottomWidth: 1,
-    borderColor: '#000',
-    justifyContent: 'center',
-    paddingLeft: 5
-  },
-  rowVersion: {
-    height: '33.33%',
-    justifyContent: 'center',
-    paddingLeft: 5
-  },
+  col3: { width: '25%', flexDirection: 'column' },
+  rowCodigo: { height: '33.33%', borderBottomWidth: 1, borderColor: '#000', justifyContent: 'center', paddingLeft: 5 },
+  rowPagina: { height: '33.33%', borderBottomWidth: 1, borderColor: '#000', justifyContent: 'center', paddingLeft: 5 },
+  rowVersion: { height: '33.33%', justifyContent: 'center', paddingLeft: 5 },
 
-  // Textos del Header
   headerLabel: { fontSize: 6, color: '#444' },
-  headerValue: { fontSize: 7, fontWeight: 'bold' },
-  headerTitleText: { fontSize: 10, fontWeight: 'bold', textTransform: 'uppercase' },
+  headerValue: { fontSize: 8, fontWeight: 'bold' },
+  headerTitleText: { fontSize: 12, fontWeight: 'bold', textTransform: 'uppercase' },
 
-
-  // === RESTO DEL DOCUMENTO (Igual que antes) ===
-  sectionTitle: { fontSize: 14, fontWeight: 'bold', textAlign: 'center', marginBottom: 15, marginTop: 10, textTransform: 'uppercase' },
+  // CUERPO PRINCIPAL
+  sectionTitle: { 
+    fontSize: 16, 
+    fontWeight: 'bold', 
+    textAlign: 'center', 
+    marginBottom: 25, 
+    textTransform: 'uppercase',
+    textDecoration: 'underline'
+  },
   
-  fieldGroup: { marginBottom: 10 },
-  label: { fontSize: 8, fontWeight: 'bold', marginBottom: 2 },
+  label: { fontSize: 8, fontWeight: 'bold', marginBottom: 4, textTransform: 'uppercase', color: '#333' },
   
   inputBox: { 
     borderWidth: 1, 
     borderColor: '#000', 
-    backgroundColor: '#eaf4fc',
-    padding: 4, 
-    minHeight: 18,
+    backgroundColor: '#f4f7fa',
+    padding: 6, 
+    minHeight: 22,
     justifyContent: 'center'
   },
-  inputText: { fontSize: 9, fontFamily: 'Helvetica-Bold' },
+  inputText: { fontSize: 10, fontFamily: 'Helvetica-Bold' },
 
-  // Grid de Fechas
   dateBoxContainer: { width: '30%' },
   
-  // Firmas
-  signatureTable: { 
-    marginTop: 40, 
+  observationsContainer: {
+    marginTop: 30,
+    flexGrow: 1, 
+  },
+  observationsBox: {
     borderWidth: 1, 
-    borderColor: '#000',
-    flexDirection: 'row'
+    borderColor: '#000', 
+    backgroundColor: '#fff',
+    padding: 8, 
+    minHeight: 120,
+    alignItems: 'flex-start'
   },
-  signatureCol: { 
-    width: '33.33%', 
-    borderRightWidth: 1, 
-    borderColor: '#000',
-    height: 60,
-    justifyContent: 'space-between'
-  },
-  signatureHeader: { 
-    backgroundColor: '#dbebf7',
-    padding: 4, 
-    textAlign: 'center', 
-    fontSize: 6, 
-    fontWeight: 'bold',
+
+  // APROBACIÓN SIMPLE (REEMPLAZA LAS FIRMAS)
+  finalApprovalBox: {
+    marginTop: 'auto', // Empuja al fondo
+    marginBottom: 20,
+    padding: 15,
+    borderTopWidth: 1,
     borderBottomWidth: 1,
-    borderColor: '#000'
-  },
-  signatureArea: {
-    padding: 4,
+    borderColor: '#000',
     alignItems: 'center',
     justifyContent: 'center',
-    flexGrow: 1
+    backgroundColor: '#f9f9f9'
   },
-  digitalStamp: {
-    fontSize: 5,
-    color: 'blue',
-    textAlign: 'center',
-    marginBottom: 1
+  finalApprovalText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+    letterSpacing: 1
+  },
+  finalApprovalSubtext: {
+    fontSize: 9,
+    color: '#444',
+    marginTop: 5
   },
 
-  // Checkboxes
-  checkboxRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, padding: 4 },
+  // UTILIDADES
+  checkboxRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 15, padding: 5 },
   checkboxItem: { flexDirection: 'row', alignItems: 'center' },
-  box: { width: 8, height: 8, borderWidth: 1, borderColor: '#000', marginRight: 3, justifyContent: 'center', alignItems: 'center', fontSize: 7 },
+  box: { width: 10, height: 10, borderWidth: 1, borderColor: '#000', marginRight: 4, justifyContent: 'center', alignItems: 'center', fontSize: 8 },
 
-  footer: { position: 'absolute', bottom: 20, left: 0, right: 0, textAlign: 'center', fontSize: 6, color: '#999' }
+  footer: { position: 'absolute', bottom: 15, left: 40, right: 40, textAlign: 'center', fontSize: 7, color: '#999', borderTopWidth: 1, borderTopColor: '#eee', paddingTop: 5 }
 });
 
 interface RequestData {
@@ -192,21 +138,16 @@ export const RequestDocument = ({ data }: { data: RequestData }) => {
     <Document>
       <Page size="LETTER" style={styles.page}>
         
-        {/* ==================== HEADER EXACTO ==================== */}
+        {/* === HEADER === */}
         <View style={styles.headerTable}>
-            
-            {/* COLUMNA 1: Logo y Vigencia */}
             <View style={styles.col1}>
                 <View style={styles.logoContainer}>
-                    {/* AQUÍ ESTÁ EL CAMBIO DEL LOGO */}
-                    <Image src="/logo-inochem.png" style={{ width: 70, height: 'auto' }} />
+                    <Image src="/logo-inochem.png" style={{ width: 90, height: 'auto' }} />
                 </View>
                 <View style={styles.vigenciaContainer}>
-                    <Text style={{ fontSize: 5 }}>Vigente a partir de: OCT-2024</Text>
+                    <Text style={{ fontSize: 6 }}>Vigente a partir de: OCT-2024</Text>
                 </View>
             </View>
-
-            {/* COLUMNA 2: Proceso y Título */}
             <View style={styles.col2}>
                 <View style={styles.rowProceso}>
                     <Text style={styles.headerLabel}>Proceso: Recursos Humanos</Text>
@@ -218,8 +159,6 @@ export const RequestDocument = ({ data }: { data: RequestData }) => {
                     <Text style={styles.headerLabel}>Próxima revisión: OCT-2027</Text>
                 </View>
             </View>
-
-            {/* COLUMNA 3: Datos de Control */}
             <View style={styles.col3}>
                 <View style={styles.rowCodigo}>
                     <Text style={styles.headerLabel}>Código: <Text style={styles.headerValue}>{docCode}</Text></Text>
@@ -228,151 +167,126 @@ export const RequestDocument = ({ data }: { data: RequestData }) => {
                     <Text style={styles.headerLabel}>Página: <Text style={styles.headerValue}>1 de 1</Text></Text>
                 </View>
                 <View style={styles.rowVersion}>
-                    <Text style={{ fontSize: 5, color: '#444' }}>Versión: Nuevo</Text>
-                    <Text style={{ fontSize: 5, color: '#444' }}>Sustituye a: N/A</Text>
+                    <Text style={{ fontSize: 6, color: '#444' }}>Versión: Nuevo</Text>
+                    <Text style={{ fontSize: 6, color: '#444' }}>Sustituye a: N/A</Text>
                 </View>
             </View>
         </View>
 
-        {/* TITULO GRANDE */}
         <Text style={styles.sectionTitle}>{docTitle}</Text>
 
-        {/* FECHA DE ELABORACIÓN (Alineada a la derecha como en el formato) */}
-        <View style={{ alignItems: 'flex-end', marginBottom: 15 }}>
-            <View style={{ width: 100 }}>
-                <View style={{ flexDirection: 'row', borderWidth: 1, borderColor: '#000' }}>
-                    <View style={{ flex: 1, borderRightWidth: 1, padding: 2, alignItems: 'center' }}>
+        {/* === FECHA DE ELABORACIÓN === */}
+        <View style={{ alignItems: 'flex-end', marginBottom: 20 }}>
+            <View style={{ width: 120 }}>
+                <View style={{ flexDirection: 'row', borderWidth: 1, borderColor: '#000', backgroundColor: '#fff' }}>
+                    <View style={{ flex: 1, borderRightWidth: 1, padding: 4, alignItems: 'center' }}>
                         <Text style={styles.inputText}>{format(new Date(data.createdAt), 'dd')}</Text>
                     </View>
-                    <View style={{ flex: 1, borderRightWidth: 1, padding: 2, alignItems: 'center' }}>
+                    <View style={{ flex: 1, borderRightWidth: 1, padding: 4, alignItems: 'center' }}>
                         <Text style={styles.inputText}>{format(new Date(data.createdAt), 'MM')}</Text>
                     </View>
-                    <View style={{ flex: 1.5, padding: 2, alignItems: 'center' }}>
+                    <View style={{ flex: 1.5, padding: 4, alignItems: 'center' }}>
                         <Text style={styles.inputText}>{format(new Date(data.createdAt), 'yyyy')}</Text>
                     </View>
                 </View>
-                <Text style={{ fontSize: 7, textAlign: 'center', marginTop: 2 }}>Fecha de elaboración</Text>
+                <Text style={{ fontSize: 7, textAlign: 'center', marginTop: 3, fontWeight: 'bold' }}>FECHA DE ELABORACIÓN</Text>
             </View>
         </View>
 
-        {/* NOMBRE DEL EMPLEADO */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 15 }}>
-            <Text style={{ ...styles.label, width: 100 }}>Nombre del empleado:</Text>
+        {/* === EMPLEADO === */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 25 }}>
+            <Text style={{ ...styles.label, width: 120 }}>NOMBRE DEL EMPLEADO:</Text>
             <View style={{ ...styles.inputBox, flex: 1 }}>
                 <Text style={styles.inputText}>{data.user.name}</Text>
             </View>
         </View>
 
-        {/* CUERPO DEL FORMATO (Vacaciones o Permisos) */}
+        {/* === CUERPO DEL FORMATO === */}
         {isVacation ? (
-            <View style={{ marginTop: 5 }}>
-                {/* Fila de Bloques: Inicio, Días, Reanudo */}
+            <View style={{ marginBottom: 10 }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                    
-                    {/* INICIO */}
                     <View style={styles.dateBoxContainer}>
-                        <View style={{ borderWidth: 1, borderColor: '#000', marginBottom: 2 }}>
-                           <View style={{ flexDirection: 'row', backgroundColor: '#eaf4fc' }}>
-                              <View style={{ flex: 1, padding: 3, alignItems: 'center', borderRightWidth: 1 }}><Text style={styles.inputText}>{format(new Date(data.startDate), 'dd')}</Text></View>
-                              <View style={{ flex: 1, padding: 3, alignItems: 'center', borderRightWidth: 1 }}><Text style={styles.inputText}>{format(new Date(data.startDate), 'MM')}</Text></View>
-                              <View style={{ flex: 1.5, padding: 3, alignItems: 'center' }}><Text style={styles.inputText}>{format(new Date(data.startDate), 'yyyy')}</Text></View>
+                        <View style={{ borderWidth: 1, borderColor: '#000', marginBottom: 4 }}>
+                           <View style={{ flexDirection: 'row', backgroundColor: '#fff' }}>
+                              <View style={{ flex: 1, padding: 5, alignItems: 'center', borderRightWidth: 1 }}><Text style={styles.inputText}>{format(new Date(data.startDate), 'dd')}</Text></View>
+                              <View style={{ flex: 1, padding: 5, alignItems: 'center', borderRightWidth: 1 }}><Text style={styles.inputText}>{format(new Date(data.startDate), 'MM')}</Text></View>
+                              <View style={{ flex: 1.5, padding: 5, alignItems: 'center' }}><Text style={styles.inputText}>{format(new Date(data.startDate), 'yyyy')}</Text></View>
                            </View>
                         </View>
-                        <Text style={{ fontSize: 7, textAlign: 'center', fontWeight: 'bold', backgroundColor: '#e0e0e0' }}>Inicio de Vacaciones</Text>
+                        <Text style={{ fontSize: 8, textAlign: 'center', fontWeight: 'bold', backgroundColor: '#eee', padding: 2 }}>INICIO DE VACACIONES</Text>
                     </View>
 
-                    {/* DÍAS - Centrado verticalmente para parecerse a la imagen */}
-                    <View style={{ width: '20%', justifyContent: 'center', alignItems: 'center', paddingTop: 10 }}>
-                         <View style={{ borderWidth: 1, width: '100%', padding: 3, alignItems: 'center', marginBottom: 2, backgroundColor: '#eaf4fc' }}>
-                            <Text style={styles.inputText}>{data.daysRequested}</Text>
+                    <View style={{ width: '25%', alignItems: 'center', justifyContent: 'flex-end' }}>
+                         <View style={{ borderWidth: 1, width: '100%', padding: 5, alignItems: 'center', marginBottom: 4, backgroundColor: '#eaf4fc' }}>
+                            <Text style={{ ...styles.inputText, fontSize: 12 }}>{data.daysRequested}</Text>
                          </View>
-                         <Text style={{ fontSize: 7, textAlign: 'center', fontWeight: 'bold', backgroundColor: '#e0e0e0', width: '100%' }}>Número de días</Text>
+                         <Text style={{ fontSize: 8, textAlign: 'center', fontWeight: 'bold', backgroundColor: '#eee', padding: 2, width: '100%' }}>NÚMERO DE DÍAS</Text>
                     </View>
 
-                    {/* REANUDO */}
                     <View style={styles.dateBoxContainer}>
-                         <View style={{ borderWidth: 1, borderColor: '#000', marginBottom: 2 }}>
-                           <View style={{ flexDirection: 'row', backgroundColor: '#eaf4fc' }}>
-                              <View style={{ flex: 1, padding: 3, alignItems: 'center', borderRightWidth: 1 }}><Text style={styles.inputText}>{data.returnDate ? format(new Date(data.returnDate), 'dd') : '-'}</Text></View>
-                              <View style={{ flex: 1, padding: 3, alignItems: 'center', borderRightWidth: 1 }}><Text style={styles.inputText}>{data.returnDate ? format(new Date(data.returnDate), 'MM') : '-'}</Text></View>
-                              <View style={{ flex: 1.5, padding: 3, alignItems: 'center' }}><Text style={styles.inputText}>{data.returnDate ? format(new Date(data.returnDate), 'yyyy') : '-'}</Text></View>
+                         <View style={{ borderWidth: 1, borderColor: '#000', marginBottom: 4 }}>
+                           <View style={{ flexDirection: 'row', backgroundColor: '#fff' }}>
+                              <View style={{ flex: 1, padding: 5, alignItems: 'center', borderRightWidth: 1 }}><Text style={styles.inputText}>{data.returnDate ? format(new Date(data.returnDate), 'dd') : '-'}</Text></View>
+                              <View style={{ flex: 1, padding: 5, alignItems: 'center', borderRightWidth: 1 }}><Text style={styles.inputText}>{data.returnDate ? format(new Date(data.returnDate), 'MM') : '-'}</Text></View>
+                              <View style={{ flex: 1.5, padding: 5, alignItems: 'center' }}><Text style={styles.inputText}>{data.returnDate ? format(new Date(data.returnDate), 'yyyy') : '-'}</Text></View>
                            </View>
                         </View>
-                        <Text style={{ fontSize: 7, textAlign: 'center', fontWeight: 'bold', backgroundColor: '#e0e0e0' }}>Reanudo labores</Text>
+                        <Text style={{ fontSize: 8, textAlign: 'center', fontWeight: 'bold', backgroundColor: '#eee', padding: 2 }}>REANUDO LABORES</Text>
                     </View>
                 </View>
             </View>
         ) : (
-            <View style={{ marginTop: 5 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 5 }}>
-                    <Text style={{ ...styles.label, width: 100 }}>Indique tipo de permiso:</Text>
-                    <View style={{ flex: 1, flexDirection: 'row', gap: 15 }}>
-                         <Text style={styles.headerValue}>{data.type === 'PERMIT_LATE' ? '[X]' : '[ ]'} Llegar tarde</Text>
-                         <Text style={styles.headerValue}>{data.type === 'PERMIT_EARLY' ? '[X]' : '[ ]'} Salir temprano</Text>
-                         <Text style={styles.headerValue}>{data.type === 'PERMIT_ABSENCE' ? '[X]' : '[ ]'} Faltar</Text>
-                         <Text style={styles.headerValue}>{data.type === 'PERMIT_BIRTHDAY' ? '[X]' : '[ ]'} Cumpleaños</Text>
-                         <Text style={styles.headerValue}>{data.type === 'PERMIT_OTHER' ? '[X]' : '[ ]'} Otro</Text>
+            <View style={{ marginBottom: 10 }}>
+                <View style={{ marginBottom: 15 }}>
+                    <Text style={{ ...styles.label, marginBottom: 8 }}>INDIQUE TIPO DE PERMISO:</Text>
+                    <View style={{ flexDirection: 'row', gap: 20, paddingLeft: 10 }}>
+                         <Text style={styles.headerValue}>{data.type === 'PERMIT_LATE' ? '[ X ]' : '[   ]'} Llegar tarde</Text>
+                         <Text style={styles.headerValue}>{data.type === 'PERMIT_EARLY' ? '[ X ]' : '[   ]'} Salir temprano</Text>
+                         <Text style={styles.headerValue}>{data.type === 'PERMIT_ABSENCE' ? '[ X ]' : '[   ]'} Faltar</Text>
+                         <Text style={styles.headerValue}>{data.type === 'PERMIT_BIRTHDAY' ? '[ X ]' : '[   ]'} Cumpleaños</Text>
+                         <Text style={styles.headerValue}>{data.type === 'PERMIT_OTHER' ? '[ X ]' : '[   ]'} Otro</Text>
                     </View>
                 </View>
                 
-                <View style={{ flexDirection: 'row', marginTop: 10 }}>
-                    <View style={{ width: '40%' }}>
+                <View style={{ flexDirection: 'row', marginTop: 10, justifyContent: 'space-between' }}>
+                    <View style={{ width: '45%' }}>
+                         <Text style={styles.label}>FECHA DE PERMISO:</Text>
                          <View style={styles.inputBox}><Text style={styles.inputText}>{format(new Date(data.startDate), 'dd/MM/yyyy')}</Text></View>
-                         <Text style={{ fontSize: 7, textAlign: 'center', fontWeight: 'bold' }}>Fecha de permiso</Text>
                     </View>
-                    <View style={{ width: '20%' }}></View>
-                    <View style={{ width: '40%' }}>
+                    <View style={{ width: '45%' }}>
+                         <Text style={styles.label}>HORARIO (SI APLICA):</Text>
                          <View style={styles.inputBox}><Text style={styles.inputText}>{data.permitTime || 'N/A'}</Text></View>
-                         <Text style={{ fontSize: 7, textAlign: 'center', fontWeight: 'bold' }}>Horario (si aplica)</Text>
                     </View>
                 </View>
             </View>
         )}
 
-        {/* OBSERVACIONES */}
-        <View style={{ marginTop: 20, flexDirection: 'row' }}>
-            <Text style={{ ...styles.label, width: 80, textDecoration: 'underline' }}>Observaciones:</Text>
-            <View style={{ ...styles.inputBox, flex: 1, minHeight: 40, backgroundColor: '#f0f8ff' }}>
-                <Text style={styles.inputText}>{data.observations}</Text>
+        {/* === OBSERVACIONES === */}
+        <View style={styles.observationsContainer}>
+            <Text style={styles.label}>OBSERVACIONES:</Text>
+            <View style={styles.observationsBox}>
+                <Text style={styles.inputText}>{data.observations || 'Sin observaciones adicionales.'}</Text>
             </View>
         </View>
 
-        {/* FIRMAS */}
-        <View style={styles.signatureTable}>
-            <View style={styles.signatureCol}>
-                <View style={styles.signatureHeader}><Text>Nombre y firma SOLICITANTE</Text></View>
-                <View style={styles.signatureArea}>
-                    <Text style={styles.digitalStamp}>Firma Digital: {data.user.employeeNumber}</Text>
-                    <Text style={{ fontSize: 8, fontWeight: 'bold' }}>{data.user.name}</Text>
-                </View>
-            </View>
-
-            <View style={styles.signatureCol}>
-                <View style={styles.signatureHeader}><Text>Nombre y firma Jefe Inmediato AUTORIZA</Text></View>
-                <View style={styles.signatureArea}>
-                    {data.approvedByBoss ? (
-                        <>
-                           <Text style={{ fontSize: 7, color: 'green' }}>[ AUTORIZADO ]</Text>
-                           <Text style={styles.digitalStamp}>{data.bossApprovalDate ? format(new Date(data.bossApprovalDate), 'dd/MM/yyyy HH:mm') : ''}</Text>
-                        </>
-                    ) : null}
-                </View>
-            </View>
-
-            <View style={{ ...styles.signatureCol, borderRightWidth: 0 }}>
-                <View style={styles.signatureHeader}><Text>Nombre y firma RECURSOS HUMANOS</Text></View>
-                <View style={styles.signatureArea}>
-                    {data.approvedByHR ? (
-                        <>
-                           <Text style={{ fontSize: 7, color: 'green' }}>[ VALIDADO ]</Text>
-                           <Text style={styles.digitalStamp}>{data.hrApprovalDate ? format(new Date(data.hrApprovalDate), 'dd/MM/yyyy HH:mm') : ''}</Text>
-                        </>
-                    ) : null}
-                </View>
+        {/* === APROBACIÓN FINAL SIMPLE (SIN CUADROS) === */}
+        <View style={styles.finalApprovalBox}>
+            <Text style={styles.finalApprovalText}>ESTA SOLICITUD HA SIDO APROBADA</Text>
+            <View style={{ flexDirection: 'row', gap: 40, marginTop: 5 }}>
+                <Text style={styles.finalApprovalSubtext}>
+                   SOLICITANTE: {data.user.name}
+                </Text>
+                <Text style={styles.finalApprovalSubtext}>
+                   AUTORIZÓ: {data.bossApprovalDate ? format(new Date(data.bossApprovalDate), 'dd/MM/yyyy') : 'SISTEMA'}
+                </Text>
             </View>
         </View>
 
-        <Text style={styles.footer}>Revvity Proprietary Information</Text>
+        {/* PIE DE PÁGINA */}
+        <View style={styles.footer}>
+             <Text>Revvity Proprietary Information | Folio: {data.id.slice(-8).toUpperCase()} | {format(new Date(), 'dd/MM/yyyy HH:mm')}</Text>
+        </View>
+
       </Page>
     </Document>
   );

@@ -134,7 +134,7 @@ export function VacationRequestForm({
         </div>
         <div>
           <h3 className="font-semibold text-lg text-slate-900">Solicitud de Vacaciones</h3>
-          <p className="text-sm text-slate-500">Formato FO03</p>
+          <p className="text-sm text-slate-500">Formato FO03PNO04-RH </p>
         </div>
       </div>
 

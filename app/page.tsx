@@ -272,10 +272,10 @@ export default async function Home() {
                 <Tabs defaultValue="vacations" className="w-full">
                   <TabsList className="grid w-full grid-cols-2 mb-6 bg-slate-100 p-1 h-auto">
                     <TabsTrigger value="vacations" className="data-[state=active]:bg-[#73C056] data-[state=active]:text-white transition-all py-2.5">
-                      <Calendar className="h-4 w-4 mr-1.5 hidden sm:inline" /> Vacaciones (FO03)
+                      <Calendar className="h-4 w-4 mr-1.5 hidden sm:inline" /> "Solicitud de vacaciones" FO03PNO04-RH 
                     </TabsTrigger>
                     <TabsTrigger value="permits" className="data-[state=active]:bg-[#73C056] data-[state=active]:text-white transition-all py-2.5">
-                      <FileText className="h-4 w-4 mr-1.5 hidden sm:inline" /> Permiso (FO02)
+                      <FileText className="h-4 w-4 mr-1.5 hidden sm:inline" />"Solicitud de permiso" FO02PNO04-RH 
                     </TabsTrigger>
                   </TabsList>
                   

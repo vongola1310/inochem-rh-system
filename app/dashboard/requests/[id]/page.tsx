@@ -212,15 +212,15 @@ export default async function RequestDetailPage({ params }: { params: { id: stri
                     
                     <div className="grid grid-cols-3 gap-3 text-center">
                       <div className="bg-white rounded-lg p-4 border border-slate-200">
-                        <p className="text-xs text-slate-500 mb-2">Total días</p>
+                        <p className="text-xs text-slate-500 mb-2">Total de días</p>
                         <p className="text-2xl font-bold text-slate-900">{breakdown.total}</p>
                       </div>
                       <div className="bg-white rounded-lg p-4 border border-slate-200">
-                        <p className="text-xs text-slate-500 mb-2">Fines semana</p>
+                        <p className="text-xs text-slate-500 mb-2">Fines de semana</p>
                         <p className="text-2xl font-bold text-slate-600">{breakdown.weekends}</p>
                       </div>
                       <div className="bg-white rounded-lg p-4 border border-slate-200">
-                        <p className="text-xs text-slate-500 mb-2">Festivos</p>
+                        <p className="text-xs text-slate-500 mb-2">Días Festivos</p>
                         <p className="text-2xl font-bold text-slate-600">{breakdown.holidays}</p>
                       </div>
                     </div>
