@@ -15,21 +15,35 @@ export async function updateEmployee(formData: FormData) {
     email: formData.get('email') as string,
     employeeNumber: formData.get('employeeNumber') as string,
     jobTitle: formData.get('jobTitle') as string,
-    // Si el jefe es "none", lo ponemos en null
     bossId: formData.get('bossId') === 'none' ? null : formData.get('bossId') as string,
   }
 
+  // Capturamos los nuevos valores de vacaciones
+  const totalDays = parseInt(formData.get('totalDays') as string) || 0
+  const usedDays = parseInt(formData.get('usedDays') as string) || 0
+
   try {
-    await prisma.user.update({
-      where: { id },
-      data: data
-    })
+    // Usamos una transacción para actualizar usuario y saldo al mismo tiempo
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id },
+        data: data
+      }),
+      prisma.vacationBalance.update({
+        where: { userId: id },
+        data: {
+          totalDays: totalDays,
+          usedDays: usedDays
+        }
+      })
+    ])
 
     revalidatePath(`/admin/employees/${id}`)
     revalidatePath('/admin/users')
-    return { success: true, message: "Datos actualizados correctamente" }
+    return { success: true, message: "Datos y saldo actualizados correctamente" }
   } catch (error) {
-    return { success: false, message: "Error al actualizar. Verifica si el correo ya existe." }
+    console.error(error)
+    return { success: false, message: "Error al actualizar. Verifica los datos." }
   }
 }
 
