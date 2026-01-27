@@ -11,9 +11,26 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger 
 } from "@/components/ui/alert-dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Pencil, Trash2, Save, Calculator, Shield } from 'lucide-react'
+import { Pencil, Trash2, Save, Calculator, Shield, Cake, Check, ChevronsUpDown, Users } from 'lucide-react'
 import { updateEmployee, deleteEmployee } from '@/app/actions/employee-management'
 import { toast } from "sonner"
+import { format } from 'date-fns'
+import { cn } from "@/lib/utils"
+
+// Componentes del Buscador (Combobox)
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 
 type EmployeeData = {
   id: string;
@@ -23,6 +40,7 @@ type EmployeeData = {
   jobTitle: string | null;
   bossId: string | null;
   role: string; 
+  birthDate: Date | null;
   balance: {
     totalDays: number;
     usedDays: number;
@@ -34,6 +52,16 @@ type BossOption = { id: string; name: string; jobTitle: string | null }
 export function EmployeeManagementPanel({ employee, bosses }: { employee: EmployeeData, bosses: BossOption[] }) {
   const [isEditing, setIsEditing] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  
+  // Estado para el buscador de jefe
+  const [openCombobox, setOpenCombobox] = useState(false)
+  const [selectedBossId, setSelectedBossId] = useState(employee.bossId || "none")
+
+  // Formatear fecha para el input (YYYY-MM-DD)
+  // Usamos una conversión segura para evitar errores si la fecha es nula
+  const defaultBirthDate = employee.birthDate 
+    ? new Date(employee.birthDate).toISOString().split('T')[0]
+    : ''
 
   async function handleUpdate(formData: FormData) {
     setIsEditing(false)
@@ -61,14 +89,14 @@ export function EmployeeManagementPanel({ employee, bosses }: { employee: Employ
             <Pencil className="w-4 h-4 mr-2"/> Editar Datos
           </Button>
         </DialogTrigger>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Editar Información del Empleado</DialogTitle>
           </DialogHeader>
           <form action={handleUpdate} className="grid gap-6 py-4">
             <input type="hidden" name="id" value={employee.id} />
             
-            {/* Sección Personal */}
+            {/* SECCIÓN 1: DATOS PERSONALES */}
             <div className="space-y-4">
                 <h4 className="font-medium text-sm text-slate-500 border-b pb-1">Datos Personales</h4>
                 
@@ -104,32 +132,98 @@ export function EmployeeManagementPanel({ employee, bosses }: { employee: Employ
                   <Label className="text-right">Email</Label>
                   <Input name="email" defaultValue={employee.email} className="col-span-3" />
                 </div>
+                
+                {/* FECHA DE NACIMIENTO */}
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label className="text-right">Cumpleaños</Label>
+                  <div className="col-span-3 relative">
+                     <Cake className="w-4 h-4 absolute left-3 top-2.5 text-pink-400 pointer-events-none"/>
+                     <Input 
+                        type="date" 
+                        name="birthDate" 
+                        defaultValue={defaultBirthDate} 
+                        className="pl-9" 
+                     />
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label className="text-right">Puesto</Label>
                   <Input name="jobTitle" defaultValue={employee.jobTitle || ''} className="col-span-3" />
                 </div>
+
+                {/* JEFE CON BUSCADOR (COMBOBOX) */}
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label className="text-right">Jefe</Label>
                   <div className="col-span-3">
-                    <Select name="bossId" defaultValue={employee.bossId || "none"}>
-                        <SelectTrigger>
-                            <SelectValue placeholder="Selecciona un jefe" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="none">-- Sin Jefe --</SelectItem>
-                            {bosses.map(b => (
-                                b.id !== employee.id && (
-                                    <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                    {/* Input oculto para enviar el valor real */}
+                    <input type="hidden" name="bossId" value={selectedBossId} />
+                    
+                    <Popover open={openCombobox} onOpenChange={setOpenCombobox}>
+                        <PopoverTrigger asChild>
+                        <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={openCombobox}
+                            className="w-full justify-between bg-white font-normal border-slate-200"
+                        >
+                            <span className="flex items-center gap-2 truncate">
+                                <Users className="w-3.5 h-3.5 text-slate-400"/>
+                                {selectedBossId && selectedBossId !== "none"
+                                    ? bosses.find((boss) => boss.id === selectedBossId)?.name
+                                    : <span className="text-slate-500">-- Sin Jefe (Director) --</span>}
+                            </span>
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[350px] p-0 shadow-lg" align="start">
+                        <Command>
+                            <CommandInput placeholder="Buscar jefe por nombre..." />
+                            <CommandList>
+                            <CommandEmpty>No encontrado.</CommandEmpty>
+                            <CommandGroup className="max-h-60 overflow-y-auto">
+                                <CommandItem
+                                    value="sin jefe none"
+                                    onSelect={() => {
+                                        setSelectedBossId("none")
+                                        setOpenCombobox(false)
+                                    }}
+                                    className="cursor-pointer hover:bg-slate-100 !opacity-100 !pointer-events-auto"
+                                >
+                                <Check className={cn("mr-2 h-4 w-4 text-[#73C056]", selectedBossId === "none" ? "opacity-100" : "opacity-0")} />
+                                -- Sin Jefe (Director) --
+                                </CommandItem>
+                                {bosses.map((boss) => (
+                                // Evitar seleccionarse a sí mismo
+                                boss.id !== employee.id && (
+                                    <CommandItem
+                                    key={boss.id}
+                                    value={boss.name}
+                                    onSelect={() => {
+                                        setSelectedBossId(boss.id)
+                                        setOpenCombobox(false)
+                                    }}
+                                    className="cursor-pointer hover:bg-blue-50 !opacity-100 !pointer-events-auto"
+                                    >
+                                    <Check className={cn("mr-2 h-4 w-4 text-[#73C056]", selectedBossId === boss.id ? "opacity-100" : "opacity-0")} />
+                                    <div className="flex flex-col">
+                                        <span className="text-sm font-medium">{boss.name}</span>
+                                        <span className="text-[10px] text-slate-500">{boss.jobTitle}</span>
+                                    </div>
+                                    </CommandItem>
                                 )
-                            ))}
-                        </SelectContent>
-                    </Select>
+                                ))}
+                            </CommandGroup>
+                            </CommandList>
+                        </Command>
+                        </PopoverContent>
+                    </Popover>
                   </div>
                 </div>
             </div>
 
-            {/* Sección Vacaciones */}
-            <div className="space-y-4">
+            {/* SECCIÓN 2: VACACIONES (MANUAL) */}
+            <div className="space-y-4 pt-2">
                 <h4 className="font-medium text-sm text-slate-500 border-b pb-1 flex items-center gap-2">
                     <Calculator className="w-4 h-4"/> Ajuste de Vacaciones
                 </h4>
@@ -153,8 +247,8 @@ export function EmployeeManagementPanel({ employee, bosses }: { employee: Employ
                         />
                     </div>
                 </div>
-                <p className="text-[10px] text-slate-500">
-                    * Modifica estos valores solo si hay errores de cálculo o ajustes manuales necesarios.
+                <p className="text-[10px] text-slate-400 italic">
+                    * Modifica estos valores solo para correcciones manuales.
                 </p>
             </div>
 
