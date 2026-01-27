@@ -27,6 +27,32 @@ export default async function UsersPage() {
     orderBy: { name: 'asc' }
   })
 
+  // ✅ NUEVO: Obtener todos los empleados para la tabla
+  const employees = await prisma.user.findMany({
+    select: {
+      id: true,
+      name: true,
+      employeeNumber: true,
+      jobTitle: true,
+      entryDate: true,
+      role: true,
+      boss: {
+        select: {
+          name: true,
+          jobTitle: true
+        }
+      },
+      balance: {
+        select: {
+          totalDays: true,
+          usedDays: true,
+          pendingDays: true
+        }
+      }
+    },
+    orderBy: { name: 'asc' }
+  })
+
   // Obtener estadísticas
   const totalEmployees = await prisma.user.count()
   const activeEmployees = await prisma.user.count({
@@ -219,28 +245,8 @@ export default async function UsersPage() {
 
             {/* Tabla de Empleados */}
             <div className="xl:col-span-2">
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                <div className="bg-linear-to-r from-slate-50 to-white p-6 border-b border-slate-200">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-lg bg-slate-100 flex items-center justify-center">
-                        <Users className="h-5 w-5 text-slate-600" />
-                      </div>
-                      <div>
-                        <h2 className="text-lg font-bold text-slate-900">Directorio de Personal</h2>
-                        <p className="text-sm text-slate-500">Lista completa de empleados</p>
-                      </div>
-                    </div>
-                    <div className="hidden sm:flex items-center gap-2 text-sm">
-                      <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></div>
-                      <span className="text-slate-600">Actualizado</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="p-6">
-                  <EmployeesTable />
-                </div>
-              </div>
+              {/* ✅ CAMBIO: Pasar los datos a la tabla */}
+              <EmployeesTable initialData={employees} />
             </div>
 
           </div>
