@@ -16,6 +16,7 @@ import { checkAndRenewBalance } from '@/lib/check-renewal'
 import { format, addYears, setYear, isBefore } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { BackupManager } from '@/components/dashboard/backup-manager'
+import { TeamCard } from '@/components/dashboard/team-card'
 
 const prisma = new PrismaClient()
 
@@ -37,7 +38,8 @@ export default async function Home() {
     include: { 
         balance: true, 
         subordinates: true,
-        backupUser: true 
+        backupUser: true,
+        boss: true 
     }
   })
 
@@ -90,17 +92,20 @@ export default async function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-20">
             
-            {/* LOGO SOLAMENTE (Sin texto adicional, ancho ajustado) */}
-            <div className="flex items-center">
-              <div className="relative h-14 w-80 shrink-0">
+            {/* LOGO Y TÍTULO */}
+            <div className="flex items-center gap-4">
+              <div className="relative h-12 w-64 shrink-0">
                 <Image 
                   src="/logo.png" 
                   alt="Inochem Logo" 
                   fill
                   className="object-contain object-left"
                   priority
-                  sizes="(max-width: 768px) 200px, 320px"
                 />
+              </div>
+              <div className="hidden lg:block border-l border-slate-300 pl-4">
+                <h1 className="font-bold text-xl text-slate-900">Sistema RH</h1>
+                <p className="text-xs text-slate-500">Solicitud de Vacaciones</p>
               </div>
             </div>
             
@@ -137,7 +142,6 @@ export default async function Home() {
                 </div>
               )}
               
-              {/* Botón Perfil */}
               <Link href="/profile">
                 <Avatar className="h-10 w-10 border-2 border-white shadow-sm hover:ring-2 hover:ring-[#73C056] transition-all cursor-pointer">
                     <AvatarImage src="" className="object-cover" />
@@ -172,7 +176,9 @@ export default async function Home() {
 
         {/* Tarjetas */}
         <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 mb-6 lg:mb-8">
-          <Card className="border-l-4 border-l-[#73C056] hover:shadow-lg transition-all hover:-translate-y-1">
+          
+          {/* Tarjeta 1: Puesto + JEFE */}
+          <Card className="border-l-4 border-l-[#73C056] hover:shadow-lg transition-all hover:-translate-y-1 flex flex-col">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-medium text-slate-600">Mi Puesto</CardTitle>
@@ -181,18 +187,38 @@ export default async function Home() {
                 </div>
               </div>
             </CardHeader>
-            <CardContent>
-              <div className="text-lg sm:text-xl font-bold text-slate-900 truncate" title={user.jobTitle || ''}>
+            <CardContent className="flex-1 flex flex-col">
+              {/* CAMBIO: Se eliminó 'truncate' y 'text-xl' para permitir salto de línea */}
+              <div className="text-lg font-bold text-slate-900 leading-snug mb-1" title={user.jobTitle || ''}>
                 {user.jobTitle}
               </div>
-              <p className="text-xs text-slate-500 mt-1">Cargo actual</p>
+              <p className="text-xs text-slate-500 mb-4">Cargo actual</p>
+              
+              <div className="mt-auto">
+                {user.boss && (
+                   <div className="pt-3 border-t border-slate-100 flex items-center gap-3">
+                      <Avatar className="h-8 w-8 border border-slate-200 shrink-0">
+                          <AvatarFallback className="bg-slate-100 text-slate-600 text-xs font-bold">
+                              {user.boss.name.charAt(0)}
+                          </AvatarFallback>
+                      </Avatar>
+                      <div className="overflow-hidden">
+                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Reporta a</p>
+                          <p className="text-sm font-semibold text-slate-800 truncate leading-tight" title={user.boss.name}>
+                              {user.boss.name}
+                          </p>
+                      </div>
+                   </div>
+                )}
+              </div>
             </CardContent>
           </Card>
           
+          {/* Tarjeta 2: Días Disponibles */}
           <Card className="border-l-4 border-l-[#73C056] hover:shadow-lg transition-all hover:-translate-y-1">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-medium text-slate-600">Días disponibles de vacaciones</CardTitle>
+                <CardTitle className="text-sm font-medium text-slate-600">Días Disponibles</CardTitle>
                 <div className="h-10 w-10 rounded-full bg-[#73C056]/10 flex items-center justify-center shrink-0">
                   <Calendar className="h-5 w-5 text-[#73C056]" />
                 </div>
@@ -222,23 +248,9 @@ export default async function Home() {
             </CardContent>
           </Card>
 
-          <Card className="border-l-4 border-l-[#73C056] hover:shadow-lg transition-all hover:-translate-y-1 sm:col-span-2 lg:col-span-1">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-medium text-slate-600">Mi Equipo</CardTitle>
-                <div className="h-10 w-10 rounded-full bg-[#73C056]/10 flex items-center justify-center shrink-0">
-                  <Users className="h-5 w-5 text-[#73C056]" />
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-baseline gap-2">
-                <span className="text-3xl sm:text-4xl font-bold text-slate-900">{user.subordinates.length}</span>
-                <span className="text-sm text-slate-600 font-medium">personas</span>
-              </div>
-              <p className="text-xs text-slate-500 mt-1">A tu cargo</p>
-            </CardContent>
-          </Card>
+          {/* Tarjeta 3: Mi Equipo */}
+          <TeamCard subordinates={user.subordinates} />
+          
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
@@ -272,20 +284,18 @@ export default async function Home() {
                 <Tabs defaultValue="vacations" className="w-full">
                   <TabsList className="grid w-full grid-cols-2 mb-6 bg-slate-100 p-1 h-auto">
                     <TabsTrigger value="vacations" className="data-[state=active]:bg-[#73C056] data-[state=active]:text-white transition-all py-2.5">
-                      <Calendar className="h-4 w-4 mr-1.5 hidden sm:inline" /> "Solicitud de vacaciones" FO03PNO04-RH 
+                      <Calendar className="h-4 w-4 mr-1.5 hidden sm:inline" /> Vacaciones (FO03)
                     </TabsTrigger>
                     <TabsTrigger value="permits" className="data-[state=active]:bg-[#73C056] data-[state=active]:text-white transition-all py-2.5">
-                      <FileText className="h-4 w-4 mr-1.5 hidden sm:inline" />"Solicitud de permiso" FO02PNO04-RH 
+                      <FileText className="h-4 w-4 mr-1.5 hidden sm:inline" /> Permiso (FO02)
                     </TabsTrigger>
                   </TabsList>
                   
                   <TabsContent value="vacations" className="mt-0">
-                    {/* Pasamos 'holidays' para el cálculo de días hábiles */}
                     <VacationRequestForm userId={user.id} holidays={holidays} />
                   </TabsContent>
                   
                   <TabsContent value="permits" className="mt-0">
-                    {/* Pasamos 'userBirthDate' para el autocompletado de cumpleaños */}
                     <PermitRequestForm 
                         userId={user.id} 
                         userBirthDate={user.birthDate} 
