@@ -1,12 +1,12 @@
 'use server'
 
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient, Role } from '@prisma/client'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
 const prisma = new PrismaClient()
 
-// 1. ACTUALIZAR DATOS DEL EMPLEADO
+// 1. ACTUALIZAR DATOS DEL EMPLEADO (AHORA CON ROL)
 export async function updateEmployee(formData: FormData) {
   const id = formData.get('id') as string
   
@@ -16,6 +16,8 @@ export async function updateEmployee(formData: FormData) {
     employeeNumber: formData.get('employeeNumber') as string,
     jobTitle: formData.get('jobTitle') as string,
     bossId: formData.get('bossId') === 'none' ? null : formData.get('bossId') as string,
+    // NUEVO: Actualizar el Rol
+    role: formData.get('role') as Role,
   }
 
   // Capturamos los nuevos valores de vacaciones
@@ -40,34 +42,31 @@ export async function updateEmployee(formData: FormData) {
 
     revalidatePath(`/admin/employees/${id}`)
     revalidatePath('/admin/users')
-    return { success: true, message: "Datos y saldo actualizados correctamente" }
+    return { success: true, message: "Datos, rol y saldo actualizados correctamente" }
   } catch (error) {
     console.error(error)
     return { success: false, message: "Error al actualizar. Verifica los datos." }
   }
 }
 
-// 2. ELIMINAR EMPLEADO (Baja definitiva)
+// 2. ELIMINAR EMPLEADO
 export async function deleteEmployee(employeeId: string) {
   try {
-    // Usamos una transacción para borrar todo lo relacionado primero
     await prisma.$transaction(async (tx) => {
-      // 1. Borrar notificaciones donde él aparece
       await tx.notification.deleteMany({ where: { userId: employeeId } })
-      
-      // 2. Borrar solicitudes de vacaciones
       await tx.request.deleteMany({ where: { userId: employeeId } })
-      
-      // 3. Borrar saldo
       await tx.vacationBalance.deleteMany({ where: { userId: employeeId } })
-
-      // 4. Desvincular subordinados (si era jefe, sus empleados se quedan sin jefe momentáneamente)
+      
+      // Desvincular de otros usuarios
       await tx.user.updateMany({
         where: { bossId: employeeId },
         data: { bossId: null }
       })
+      await tx.user.updateMany({
+        where: { backupId: employeeId },
+        data: { backupId: null }
+      })
 
-      // 5. FINALMENTE borrar el usuario
       await tx.user.delete({ where: { id: employeeId } })
     })
   } catch (error) {
@@ -75,6 +74,5 @@ export async function deleteEmployee(employeeId: string) {
     return { success: false, message: "Error al eliminar empleado." }
   }
 
-  // Redirigir al directorio porque la página del empleado ya no existe
   redirect('/admin/users')
 }

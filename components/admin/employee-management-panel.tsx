@@ -11,7 +11,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger 
 } from "@/components/ui/alert-dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Pencil, Trash2, Save, Calculator } from 'lucide-react'
+import { Pencil, Trash2, Save, Calculator, Shield } from 'lucide-react'
 import { updateEmployee, deleteEmployee } from '@/app/actions/employee-management'
 import { toast } from "sonner"
 
@@ -22,7 +22,7 @@ type EmployeeData = {
   employeeNumber: string;
   jobTitle: string | null;
   bossId: string | null;
-  // Agregamos el balance al tipo para poder editarlo
+  role: string; 
   balance: {
     totalDays: number;
     usedDays: number;
@@ -71,6 +71,27 @@ export function EmployeeManagementPanel({ employee, bosses }: { employee: Employ
             {/* Sección Personal */}
             <div className="space-y-4">
                 <h4 className="font-medium text-sm text-slate-500 border-b pb-1">Datos Personales</h4>
+                
+                {/* Selector de Rol */}
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label className="text-right">Rol Sistema</Label>
+                  <div className="col-span-3">
+                    <Select name="role" defaultValue={employee.role}>
+                        <SelectTrigger className="bg-slate-50 border-slate-200">
+                            <div className="flex items-center gap-2">
+                                <Shield className="w-3.5 h-3.5 text-slate-500"/>
+                                <SelectValue placeholder="Selecciona un rol" />
+                            </div>
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="EMPLOYEE">👤 Empleado Estándar</SelectItem>
+                            <SelectItem value="HR">👔 Recursos Humanos (Gestor)</SelectItem>
+                            <SelectItem value="ADMIN">⚙️ Administrador (IT)</SelectItem>
+                        </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label className="text-right">Nombre</Label>
                   <Input name="name" defaultValue={employee.name} className="col-span-3" />
@@ -107,7 +128,7 @@ export function EmployeeManagementPanel({ employee, bosses }: { employee: Employ
                 </div>
             </div>
 
-            {/* Sección Vacaciones (NUEVO) */}
+            {/* Sección Vacaciones */}
             <div className="space-y-4">
                 <h4 className="font-medium text-sm text-slate-500 border-b pb-1 flex items-center gap-2">
                     <Calculator className="w-4 h-4"/> Ajuste de Vacaciones
