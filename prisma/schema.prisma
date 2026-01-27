@@ -127,7 +127,7 @@ enum RequestStatus {
   APPROVED
   REJECTED
   CANCELLED
-  
+  CANCELLATION_REQUESTED
 }
 
 enum RequestType {

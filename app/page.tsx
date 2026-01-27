@@ -27,12 +27,12 @@ export default async function Home() {
     redirect('/login')
   }
 
-  // 1. Renovación automática al entrar
+  // 1. Renovación automática al entrar (si es aniversario)
   if (session.user.id) {
     await checkAndRenewBalance(session.user.id)
   }
 
-  // 2. Obtener datos del usuario
+  // 2. Obtener datos del usuario (incluyendo jefe, equipo y respaldo)
   const user = await prisma.user.findUnique({
     where: { email: session.user.email },
     include: { 
@@ -53,19 +53,20 @@ export default async function Home() {
     date: h.date.toISOString()
   }))
 
-  // 4. Obtener lista para respaldo
+  // 4. Obtener lista de candidatos para "Jefe de Respaldo"
   const potentialBackups = await prisma.user.findMany({
     where: { 
         id: { not: user?.id },
         role: { not: 'HR' } 
     },
-    select: { id: true, name: true, jobTitle: true },
+    // CORRECCIÓN: Eliminamos 'image: true' porque no existe en la BD
+    select: { id: true, name: true, jobTitle: true, email: true }, 
     orderBy: { name: 'asc' }
   })
 
   if (!user) return <div className="p-8 text-red-500">Error: Usuario no encontrado en base de datos.</div>
 
-  // --- CÁLCULOS ---
+  // --- CÁLCULOS DE SALDO Y VIGENCIA ---
   const totalDays = user.balance?.totalDays || 0
   const usedDays = user.balance?.usedDays || 0
   const pendingDays = user.balance?.pendingDays || 0
@@ -75,6 +76,7 @@ export default async function Home() {
   const entryDate = new Date(user.entryDate)
   const currentYear = today.getFullYear()
   
+  // Calcular ciclo actual
   let cycleStart = setYear(entryDate, currentYear)
   if (isBefore(today, cycleStart)) {
     cycleStart = addYears(cycleStart, -1)
@@ -87,12 +89,13 @@ export default async function Home() {
 
   return (
     <div className="min-h-screen bg-linear-to-br from-slate-50 via-slate-100 to-slate-50">
-      {/* NAVBAR */}
+      
+      {/* === NAVBAR === */}
       <nav className="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-50 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-20">
             
-            {/* LOGO Y TÍTULO */}
+            {/* Logo */}
             <div className="flex items-center gap-4">
               <div className="relative h-12 w-64 shrink-0">
                 <Image 
@@ -116,7 +119,7 @@ export default async function Home() {
                 <p className="text-xs text-slate-600">{user.jobTitle}</p>
               </div>
               
-              {/* Botones Admin (Solo RH) */}
+              {/* Botones Admin (Solo para RH) */}
               {(user as any).role === 'HR' && (
                 <div className="hidden md:flex items-center gap-2">
                   <Link href="/admin">
@@ -142,6 +145,21 @@ export default async function Home() {
                 </div>
               )}
               
+              {/* Botón Gestión Equipo (Solo Jefes) */}
+              {isManager && (
+                <Link href="/team/history">
+                   <Button 
+                     variant="outline" 
+                     size="sm" 
+                     className="hidden md:flex border-blue-200 text-blue-600 hover:bg-blue-50 hover:text-blue-700 transition-all mr-2"
+                   >
+                      <Users className="h-4 w-4 mr-1.5" /> 
+                      Gestión Equipo
+                   </Button>
+                </Link>
+              )}
+
+              {/* Botón Perfil */}
               <Link href="/profile">
                 <Avatar className="h-10 w-10 border-2 border-white shadow-sm hover:ring-2 hover:ring-[#73C056] transition-all cursor-pointer">
                     <AvatarImage src="" className="object-cover" />
@@ -167,17 +185,19 @@ export default async function Home() {
         </div>
       </nav>
 
-      {/* DASHBOARD */}
+      {/* === CONTENIDO PRINCIPAL === */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
+        
+        {/* Header Móvil */}
         <div className="mb-6 lg:hidden">
           <h2 className="text-xl font-bold text-slate-900">Hola, {user.name?.split(' ')[0]} 👋</h2>
           <p className="text-sm text-slate-600">{user.jobTitle}</p>
         </div>
 
-        {/* Tarjetas */}
+        {/* TARJETAS DE RESUMEN */}
         <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 mb-6 lg:mb-8">
           
-          {/* Tarjeta 1: Puesto + JEFE */}
+          {/* 1. Tarjeta: Mi Puesto + Jefe */}
           <Card className="border-l-4 border-l-[#73C056] hover:shadow-lg transition-all hover:-translate-y-1 flex flex-col">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
@@ -188,33 +208,34 @@ export default async function Home() {
               </div>
             </CardHeader>
             <CardContent className="flex-1 flex flex-col">
-              {/* CAMBIO: Se eliminó 'truncate' y 'text-xl' para permitir salto de línea */}
               <div className="text-lg font-bold text-slate-900 leading-snug mb-1" title={user.jobTitle || ''}>
                 {user.jobTitle}
               </div>
               <p className="text-xs text-slate-500 mb-4">Cargo actual</p>
               
-              <div className="mt-auto">
-                {user.boss && (
-                   <div className="pt-3 border-t border-slate-100 flex items-center gap-3">
-                      <Avatar className="h-8 w-8 border border-slate-200 shrink-0">
-                          <AvatarFallback className="bg-slate-100 text-slate-600 text-xs font-bold">
-                              {user.boss.name.charAt(0)}
-                          </AvatarFallback>
-                      </Avatar>
-                      <div className="overflow-hidden">
-                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Reporta a</p>
-                          <p className="text-sm font-semibold text-slate-800 truncate leading-tight" title={user.boss.name}>
-                              {user.boss.name}
-                          </p>
-                      </div>
-                   </div>
-                )}
+              <div className="mt-auto pt-3 border-t border-slate-100 flex items-center gap-3">
+                  {user.boss ? (
+                    <>
+                        <Avatar className="h-8 w-8 border border-slate-200 shrink-0">
+                            <AvatarFallback className="bg-slate-100 text-slate-600 text-xs font-bold">
+                                {user.boss.name.charAt(0)}
+                            </AvatarFallback>
+                        </Avatar>
+                        <div className="overflow-hidden">
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Reporta a</p>
+                            <p className="text-sm font-semibold text-slate-800 truncate leading-tight" title={user.boss.name}>
+                                {user.boss.name}
+                            </p>
+                        </div>
+                    </>
+                  ) : (
+                    <p className="text-xs text-slate-400 italic">Reporta a Dirección</p>
+                  )}
               </div>
             </CardContent>
           </Card>
           
-          {/* Tarjeta 2: Días Disponibles */}
+          {/* 2. Tarjeta: Días Disponibles */}
           <Card className="border-l-4 border-l-[#73C056] hover:shadow-lg transition-all hover:-translate-y-1">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
@@ -248,13 +269,15 @@ export default async function Home() {
             </CardContent>
           </Card>
 
-          {/* Tarjeta 3: Mi Equipo */}
+          {/* 3. Tarjeta: Mi Equipo */}
           <TeamCard subordinates={user.subordinates} />
           
         </div>
 
+        {/* --- GRID DE FORMULARIOS E HISTORIAL --- */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
-          {/* COLUMNA IZQUIERDA - FORMULARIOS Y GESTIÓN */}
+          
+          {/* COLUMNA IZQUIERDA (7 cols) */}
           <div className="lg:col-span-7 xl:col-span-8 space-y-6">
             
             {/* Gestor de Respaldo (Solo si es jefe) */}
@@ -267,6 +290,7 @@ export default async function Home() {
                 />
             )}
 
+            {/* Caja de Formularios */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
               <div className="bg-linear-to-r from-[#73C056] to-[#62a847] p-6">
                 <div className="flex items-center gap-3">
@@ -292,10 +316,12 @@ export default async function Home() {
                   </TabsList>
                   
                   <TabsContent value="vacations" className="mt-0">
+                    {/* Formulario de Vacaciones con festivos */}
                     <VacationRequestForm userId={user.id} holidays={holidays} />
                   </TabsContent>
                   
                   <TabsContent value="permits" className="mt-0">
+                    {/* Formulario de Permisos con fecha de cumple */}
                     <PermitRequestForm 
                         userId={user.id} 
                         userBirthDate={user.birthDate} 
@@ -306,7 +332,7 @@ export default async function Home() {
             </div>
           </div>
 
-          {/* COLUMNA DERECHA - HISTORIAL */}
+          {/* COLUMNA DERECHA (5 cols) */}
           <div className="lg:col-span-5 xl:col-span-4">
             <div className="lg:sticky lg:top-24">
               <RequestHistory userId={user.id} />
