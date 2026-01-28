@@ -22,7 +22,7 @@ export default async function AdminDashboard() {
   if (!session?.user) redirect('/login')
   if ((session.user as any).role !== 'HR') redirect('/')
 
-  // Filtramos para ver SOLO lo que RH debe firmar obligatoriamente.
+  // 1. CONSULTA DE SOLICITUDES PENDIENTES
   const pendingRequests = await prisma.request.findMany({
     where: { 
         status: 'PENDING_HR',
@@ -30,8 +30,24 @@ export default async function AdminDashboard() {
             in: ['VACATION', 'PERMIT_BIRTHDAY'] 
         }
     },
-    include: { user: true },
+    include: { 
+      user: {
+        include: {
+          balance: true
+        }
+      } 
+    },
     orderBy: { createdAt: 'desc' }
+  })
+
+  // 2. NUEVA CONSULTA: OBTENER TODOS LOS EMPLEADOS PARA EL DIRECTORIO
+  // Esto es necesario para pasar 'initialData' a la tabla interactiva
+  const allEmployees = await prisma.user.findMany({
+    include: { 
+      balance: true,
+      boss: { select: { name: true, jobTitle: true } }
+    },
+    orderBy: { name: 'asc' }
   })
 
   const requestTypeMap: Record<string, { label: string; icon: string; variant: string }> = {
@@ -162,9 +178,9 @@ export default async function AdminDashboard() {
         <TabsContent value="pending">
           <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
             <div className="p-4 border-b border-slate-200 bg-linear-to-r from-slate-50 to-white">
-              <h3 className="font-semibold text-slate-900">Solicitudes pendientes de validación</h3>
+              <h3 className="font-semibold text-slate-900">Solicitudes Pendientes de Validación</h3>
               <p className="text-sm text-slate-500 mt-1">
-                Los permisos son aprobados unicamente por el lider, excepto los de cumpleaños.
+                Mostrando solo Vacaciones y Cumpleaños (Los permisos simples se aprueban automáticamente)
               </p>
             </div>
             
@@ -175,7 +191,9 @@ export default async function AdminDashboard() {
                     <TableHead className="font-semibold text-slate-700">Empleado</TableHead>
                     <TableHead className="font-semibold text-slate-700">Tipo de Solicitud</TableHead>
                     <TableHead className="font-semibold text-slate-700">Fecha Inicio</TableHead>
-                    <TableHead className="font-semibold text-slate-700">Días</TableHead>
+                    <TableHead className="font-semibold text-slate-700 text-center">Días</TableHead>
+                    {/* 2. NUEVA COLUMNA DE SALDO */}
+                    <TableHead className="font-semibold text-slate-700 text-center">Saldo Disp.</TableHead>
                     <TableHead className="font-semibold text-slate-700">Estado</TableHead>
                     <TableHead className="text-right font-semibold text-slate-700">Acción</TableHead>
                   </TableRow>
@@ -183,7 +201,7 @@ export default async function AdminDashboard() {
                 <TableBody>
                   {pendingRequests.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center h-32">
+                      <TableCell colSpan={7} className="text-center h-32">
                         <div className="flex flex-col items-center justify-center gap-2 text-slate-400">
                           <CheckCircle className="h-12 w-12" />
                           <p className="font-medium">No hay solicitudes pendientes</p>
@@ -195,6 +213,13 @@ export default async function AdminDashboard() {
                     pendingRequests.map((req) => {
                       const typeInfo = requestTypeMap[req.type] || requestTypeMap['PERMIT_OTHER']
                       
+                      // CÁLCULO DE SALDO DISPONIBLE EN VIVO
+                      const balance = req.user.balance
+                      const total = balance?.totalDays || 0
+                      const used = balance?.usedDays || 0
+                      const pending = balance?.pendingDays || 0
+                      const available = total - used - pending
+
                       return (
                         <TableRow key={req.id} className="hover:bg-slate-50 transition-colors">
                           <TableCell>
@@ -217,11 +242,19 @@ export default async function AdminDashboard() {
                               {format(req.startDate, "d 'de' MMM", { locale: es })}
                             </div>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="text-center">
                             <Badge variant="outline" className="bg-slate-50 text-slate-700 border-slate-300">
                               {req.daysRequested} {req.daysRequested === 1 ? 'día' : 'días'}
                             </Badge>
                           </TableCell>
+                          
+                          {/* 3. CELDA DE SALDO DISPONIBLE */}
+                          <TableCell className="text-center">
+                             <span className={`font-bold text-sm ${available < 0 ? 'text-red-600' : 'text-[#73C056]'}`}>
+                                {available} días
+                             </span>
+                          </TableCell>
+
                           <TableCell>
                             <Badge className="bg-orange-50 text-orange-700 border border-orange-200 hover:bg-orange-100">
                               Pendiente RH
@@ -253,7 +286,8 @@ export default async function AdminDashboard() {
 
         {/* PESTAÑA 2: DIRECTORIO */}
         <TabsContent value="directory">
-          <EmployeesTable />
+          {/* AQUÍ PASAMOS LOS DATOS INICIALES A LA TABLA */}
+          <EmployeesTable initialData={allEmployees} />
         </TabsContent>
       </Tabs>
     </div>

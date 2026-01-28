@@ -27,23 +27,28 @@ export default async function Home() {
     redirect('/login')
   }
 
-  // 1. Renovación automática al entrar (si es aniversario)
+  // 1. Renovación automática al entrar (Lazy Evaluation)
   if (session.user.id) {
     await checkAndRenewBalance(session.user.id)
   }
 
-  // 2. Obtener datos del usuario (incluyendo jefe, equipo y respaldo)
+  // 2. Obtener datos del usuario
   const user = await prisma.user.findUnique({
     where: { email: session.user.email },
     include: { 
         balance: true, 
-        subordinates: true,
+        // Incluimos balance de subordinados para la TeamCard
+        subordinates: {
+          include: {
+            balance: true 
+          }
+        },
         backupUser: true,
         boss: true 
     }
   })
 
-  // 3. Obtener días festivos
+  // 3. Obtener días festivos para el calendario
   const holidaysRaw = await prisma.holiday.findMany({
     select: { date: true, name: true }
   })
@@ -53,20 +58,19 @@ export default async function Home() {
     date: h.date.toISOString()
   }))
 
-  // 4. Obtener lista de candidatos para "Jefe de Respaldo"
+  // 4. Obtener lista para respaldo (Jefe Interino)
   const potentialBackups = await prisma.user.findMany({
     where: { 
         id: { not: user?.id },
         role: { not: 'HR' } 
     },
-    // CORRECCIÓN: Eliminamos 'image: true' porque no existe en la BD
-    select: { id: true, name: true, jobTitle: true, email: true }, 
+    select: { id: true, name: true, jobTitle: true },
     orderBy: { name: 'asc' }
   })
 
   if (!user) return <div className="p-8 text-red-500">Error: Usuario no encontrado en base de datos.</div>
 
-  // --- CÁLCULOS DE SALDO Y VIGENCIA ---
+  // --- CÁLCULOS ---
   const totalDays = user.balance?.totalDays || 0
   const usedDays = user.balance?.usedDays || 0
   const pendingDays = user.balance?.pendingDays || 0
@@ -76,7 +80,7 @@ export default async function Home() {
   const entryDate = new Date(user.entryDate)
   const currentYear = today.getFullYear()
   
-  // Calcular ciclo actual
+  // Calcular ciclo de vigencia actual
   let cycleStart = setYear(entryDate, currentYear)
   if (isBefore(today, cycleStart)) {
     cycleStart = addYears(cycleStart, -1)
@@ -89,13 +93,12 @@ export default async function Home() {
 
   return (
     <div className="min-h-screen bg-linear-to-br from-slate-50 via-slate-100 to-slate-50">
-      
-      {/* === NAVBAR === */}
+      {/* NAVBAR */}
       <nav className="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-50 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-20">
             
-            {/* Logo */}
+            {/* LOGO */}
             <div className="flex items-center gap-4">
               <div className="relative h-12 w-64 shrink-0">
                 <Image 
@@ -119,7 +122,7 @@ export default async function Home() {
                 <p className="text-xs text-slate-600">{user.jobTitle}</p>
               </div>
               
-              {/* Botones Admin (Solo para RH) */}
+              {/* Botones Admin (Solo RH) */}
               {(user as any).role === 'HR' && (
                 <div className="hidden md:flex items-center gap-2">
                   <Link href="/admin">
@@ -144,7 +147,7 @@ export default async function Home() {
                   </Link>
                 </div>
               )}
-              
+
               {/* Botón Gestión Equipo (Solo Jefes) */}
               {isManager && (
                 <Link href="/team/history">
@@ -158,7 +161,7 @@ export default async function Home() {
                    </Button>
                 </Link>
               )}
-
+              
               {/* Botón Perfil */}
               <Link href="/profile">
                 <Avatar className="h-10 w-10 border-2 border-white shadow-sm hover:ring-2 hover:ring-[#73C056] transition-all cursor-pointer">
@@ -185,19 +188,17 @@ export default async function Home() {
         </div>
       </nav>
 
-      {/* === CONTENIDO PRINCIPAL === */}
+      {/* DASHBOARD */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
-        
-        {/* Header Móvil */}
         <div className="mb-6 lg:hidden">
           <h2 className="text-xl font-bold text-slate-900">Hola, {user.name?.split(' ')[0]} 👋</h2>
           <p className="text-sm text-slate-600">{user.jobTitle}</p>
         </div>
 
-        {/* TARJETAS DE RESUMEN */}
+        {/* Tarjetas */}
         <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 mb-6 lg:mb-8">
           
-          {/* 1. Tarjeta: Mi Puesto + Jefe */}
+          {/* Tarjeta 1: Mi Puesto + Jefe */}
           <Card className="border-l-4 border-l-[#73C056] hover:shadow-lg transition-all hover:-translate-y-1 flex flex-col">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
@@ -235,7 +236,7 @@ export default async function Home() {
             </CardContent>
           </Card>
           
-          {/* 2. Tarjeta: Días Disponibles */}
+          {/* Tarjeta 2: Días Disponibles */}
           <Card className="border-l-4 border-l-[#73C056] hover:shadow-lg transition-all hover:-translate-y-1">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
@@ -269,15 +270,13 @@ export default async function Home() {
             </CardContent>
           </Card>
 
-          {/* 3. Tarjeta: Mi Equipo */}
+          {/* Tarjeta 3: Mi Equipo (Interactivo) */}
           <TeamCard subordinates={user.subordinates} />
           
         </div>
 
-        {/* --- GRID DE FORMULARIOS E HISTORIAL --- */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
-          
-          {/* COLUMNA IZQUIERDA (7 cols) */}
+          {/* COLUMNA IZQUIERDA - FORMULARIOS Y GESTIÓN */}
           <div className="lg:col-span-7 xl:col-span-8 space-y-6">
             
             {/* Gestor de Respaldo (Solo si es jefe) */}
@@ -290,7 +289,6 @@ export default async function Home() {
                 />
             )}
 
-            {/* Caja de Formularios */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
               <div className="bg-linear-to-r from-[#73C056] to-[#62a847] p-6">
                 <div className="flex items-center gap-3">
@@ -316,15 +314,20 @@ export default async function Home() {
                   </TabsList>
                   
                   <TabsContent value="vacations" className="mt-0">
-                    {/* Formulario de Vacaciones con festivos */}
-                    <VacationRequestForm userId={user.id} holidays={holidays} />
+                    {/* IMPORTANTE: Pasamos los holidays al formulario */}
+                    <VacationRequestForm 
+                        userId={user.id} 
+                        holidays={holidays}
+                        userBirthDate={user.birthDate} 
+                    />
                   </TabsContent>
                   
                   <TabsContent value="permits" className="mt-0">
-                    {/* Formulario de Permisos con fecha de cumple */}
+                    {/* IMPORTANTE: Pasamos la fecha de cumpleaños */}
                     <PermitRequestForm 
                         userId={user.id} 
                         userBirthDate={user.birthDate} 
+                        holidays={holidays}
                     />
                   </TabsContent>
                 </Tabs>
@@ -332,7 +335,7 @@ export default async function Home() {
             </div>
           </div>
 
-          {/* COLUMNA DERECHA (5 cols) */}
+          {/* COLUMNA DERECHA - HISTORIAL */}
           <div className="lg:col-span-5 xl:col-span-4">
             <div className="lg:sticky lg:top-24">
               <RequestHistory userId={user.id} />

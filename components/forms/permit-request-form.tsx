@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { format, setYear, isPast, addYears } from 'date-fns'
+import { useState, useEffect, useMemo } from 'react'
+import { format, setYear } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { CalendarIcon, Clock, FileText, Send, Cake, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -14,13 +14,44 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { createRequest } from '@/app/actions/create-request'
 import { toast } from "sonner" 
 
-export function PermitRequestForm({ userId, userBirthDate }: { userId: string, userBirthDate?: Date | null }) {
+// Definimos el tipo para los festivos
+type Holiday = {
+  date: string 
+  name: string
+}
+
+// CORRECCIÓN: Agregamos 'holidays' a las props del componente y al tipo
+export function PermitRequestForm({ 
+    userId, 
+    userBirthDate,
+    holidays = []
+}: { 
+    userId: string, 
+    userBirthDate?: Date | null,
+    holidays?: Holiday[]
+}) {
   const [date, setDate] = useState<Date>()
   const [type, setType] = useState<string>("PERMIT_LATE")
   const [observation, setObservation] = useState("") 
   const [loading, setLoading] = useState(false)
 
-  // Lógica de autocompletado
+  // 1. Calcular días deshabilitados (Fines de semana y Festivos)
+  const isDateDisabled = useMemo(() => {
+    const holidayDates = new Set(
+      holidays.map(h => {
+        const date = new Date(h.date)
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+      })
+    )
+    
+    return (date: Date) => {
+      const dayOfWeek = date.getDay()
+      const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+      // Deshabilitamos Sábado(6), Domingo(0) y Festivos
+      return dayOfWeek === 0 || dayOfWeek === 6 || holidayDates.has(dateStr)
+    }
+  }, [holidays])
+
   useEffect(() => {
     if (type === 'PERMIT_BIRTHDAY') {
         setObservation("Día libre por Cumpleaños 🎉")
@@ -28,13 +59,7 @@ export function PermitRequestForm({ userId, userBirthDate }: { userId: string, u
         if (userBirthDate) {
             const today = new Date();
             const birthDateObj = new Date(userBirthDate);
-            
-            // Calcular cumpleaños este año
             let nextBirthday = setYear(birthDateObj, today.getFullYear());
-            
-            // Opcional: Lógica para sugerir el próximo año si ya pasó
-            // if (isPast(nextBirthday) && nextBirthday.getDate() !== today.getDate()) { ... }
-
             setDate(nextBirthday);
         } else {
             toast.info("No tenemos tu fecha de nacimiento registrada", {
@@ -68,7 +93,6 @@ export function PermitRequestForm({ userId, userBirthDate }: { userId: string, u
     }
   }
 
-  // Variable auxiliar para saber si estamos en modo cumpleaños (bloqueado)
   const isBirthdayMode = type === 'PERMIT_BIRTHDAY';
 
   return (
@@ -79,11 +103,10 @@ export function PermitRequestForm({ userId, userBirthDate }: { userId: string, u
         </div>
         <div>
           <h3 className="font-semibold text-lg text-slate-900">Solicitud de Permiso</h3>
-          <p className="text-sm text-slate-500">Formato FO02PNO04-RH</p>
+          <p className="text-sm text-slate-500">Formato FO02</p>
         </div>
       </div>
       
-      {/* Tipo de Permiso */}
       <div className="space-y-2">
         <Label className="text-slate-700 font-medium">Tipo de Incidencia</Label>
         <Select name="type" onValueChange={setType} value={type}>
@@ -91,59 +114,28 @@ export function PermitRequestForm({ userId, userBirthDate }: { userId: string, u
             <SelectValue placeholder="Selecciona..." />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="PERMIT_LATE">
-              <span className="flex items-center gap-2">
-                <span>⏰</span> Llegar Tarde
-              </span>
-            </SelectItem>
-            <SelectItem value="PERMIT_EARLY">
-              <span className="flex items-center gap-2">
-                <span>🏃</span> Salir Temprano
-              </span>
-            </SelectItem>
-            <SelectItem value="PERMIT_ABSENCE">
-              <span className="flex items-center gap-2">
-                <span>📅</span> Faltar (Día completo)
-              </span>
-            </SelectItem>
-            
-            <SelectItem value="PERMIT_BIRTHDAY">
-              <span className="flex items-center gap-2 font-medium text-pink-600">
-                <Cake className="h-4 w-4" /> Día de Cumpleaños
-              </span>
-            </SelectItem>
-
-            <SelectItem value="PERMIT_OTHER">
-              <span className="flex items-center gap-2">
-                <span>📝</span> Otro
-              </span>
-            </SelectItem>
+            <SelectItem value="PERMIT_LATE"><span>⏰</span> Llegar Tarde</SelectItem>
+            <SelectItem value="PERMIT_EARLY"><span>🏃</span> Salir Temprano</SelectItem>
+            <SelectItem value="PERMIT_ABSENCE"><span>📅</span> Faltar (Día completo)</SelectItem>
+            <SelectItem value="PERMIT_BIRTHDAY"><span className="text-pink-600 font-medium"><Cake className="h-4 w-4 inline mr-1"/> Día de Cumpleaños</span></SelectItem>
+            <SelectItem value="PERMIT_OTHER"><span>📝</span> Otro</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
-      {/* Fecha */}
       <div className="flex flex-col space-y-2">
         <Label className="text-slate-700 font-medium">Fecha del Permiso</Label>
         <Popover>
           <PopoverTrigger asChild>
             <Button 
               variant="outline" 
-              // AQUI EL CAMBIO: Deshabilitamos si es cumpleaños para evitar edición
               disabled={isBirthdayMode}
-              className={`
-                w-full justify-start text-left font-normal border-slate-300 
-                ${!date && "text-muted-foreground"}
-                ${isBirthdayMode ? "bg-slate-100 opacity-100 cursor-not-allowed border-slate-200" : "hover:border-[#73C056] hover:bg-[#73C056]/5"}
-              `}
+              className={`w-full justify-start text-left font-normal border-slate-300 ${!date && "text-muted-foreground"} ${isBirthdayMode ? "bg-slate-100 opacity-100 cursor-not-allowed" : "hover:border-[#73C056]"}`}
             >
-              {/* Mostramos candado si está bloqueado, o calendario normal */}
               {isBirthdayMode ? <Lock className="mr-2 h-4 w-4 text-slate-400" /> : <CalendarIcon className="mr-2 h-4 w-4 text-[#73C056]" />}
-              
               {date ? format(date, "PPP", { locale: es }) : <span>Selecciona la fecha</span>}
             </Button>
           </PopoverTrigger>
-          {/* Solo renderizamos el contenido si NO está bloqueado (doble seguridad) */}
           {!isBirthdayMode && (
             <PopoverContent className="w-auto p-0" align="start">
                 <Calendar 
@@ -153,11 +145,12 @@ export function PermitRequestForm({ userId, userBirthDate }: { userId: string, u
                 initialFocus
                 locale={es}
                 className="rounded-md border"
+                // 2. APLICAMOS EL BLOQUEO DE FECHAS AQUÍ
+                disabled={isDateDisabled}
                 />
             </PopoverContent>
           )}
         </Popover>
-        
         {isBirthdayMode && (
             <p className="text-xs text-pink-600 flex items-center gap-1 animate-in fade-in">
                 <Cake className="h-3 w-3" /> ¡Feliz cumpleaños! La fecha se asigna automáticamente.
@@ -165,65 +158,33 @@ export function PermitRequestForm({ userId, userBirthDate }: { userId: string, u
         )}
       </div>
 
-      {/* Hora (Se oculta si es cumpleaños) */}
       {(type === 'PERMIT_LATE' || type === 'PERMIT_EARLY') && (
         <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
-          <Label className="text-slate-700 font-medium">
-            Horario {type === 'PERMIT_LATE' ? '(Hora de llegada)' : '(Hora de salida)'}
-          </Label>
+          <Label className="text-slate-700 font-medium">Horario</Label>
           <div className="relative">
             <Clock className="absolute left-3 top-3 h-4 w-4 text-[#73C056]" />
-            <Input 
-              name="permitTime" 
-              placeholder="Ej: 10:30 AM" 
-              className="pl-10 border-slate-300 focus:border-[#73C056] focus:ring-[#73C056] transition-colors" 
-            />
+            <Input name="permitTime" placeholder="Ej: 10:30 AM" className="pl-10 border-slate-300 focus:border-[#73C056]" />
           </div>
-          <p className="text-xs text-slate-500">Formato: HH:MM AM/PM</p>
         </div>
       )}
 
-      {/* Motivo */}
       <div className="flex flex-col space-y-2">
-        <Label htmlFor="obs" className="text-slate-700 font-medium">
-          Motivo <span className="text-red-500">*</span>
-        </Label>
+        <Label htmlFor="obs" className="text-slate-700 font-medium">Motivo</Label>
         <Textarea 
           name="observations" 
           id="obs" 
-          placeholder="Ej: Cita médica, Trámite personal, Asunto familiar..." 
+          placeholder="Ej: Cita médica..." 
           required 
           rows={4}
           value={observation}
           onChange={(e) => setObservation(e.target.value)}
-          // AQUI EL CAMBIO: Deshabilitamos edición en cumpleaños
           disabled={isBirthdayMode}
-          className={`
-            border-slate-300 focus:border-[#73C056] focus:ring-[#73C056] transition-colors resize-none
-            ${isBirthdayMode ? "bg-slate-50 text-slate-500" : ""}
-          `}
+          className={`border-slate-300 focus:border-[#73C056] resize-none ${isBirthdayMode ? "bg-slate-50" : ""}`}
         />
-        {!isBirthdayMode && (
-            <p className="text-xs text-slate-500">Por favor, proporciona una justificación clara y detallada</p>
-        )}
       </div>
 
-      <Button 
-        type="submit" 
-        className="w-full bg-[#73C056] hover:bg-[#62a847] text-white font-semibold py-6 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed" 
-        disabled={loading || !date}
-      >
-        {loading ? (
-          <>
-            <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-            Enviando...
-          </>
-        ) : (
-          <>
-            <Send className="mr-2 h-4 w-4" />
-            Solicitar Permiso
-          </>
-        )}
+      <Button type="submit" className="w-full bg-[#73C056] hover:bg-[#62a847] text-white font-semibold py-6 shadow-md" disabled={loading || !date}>
+         {loading ? 'Enviando...' : <><Send className="mr-2 h-4 w-4" /> Enviar Solicitud</>}
       </Button>
     </form>
   )
