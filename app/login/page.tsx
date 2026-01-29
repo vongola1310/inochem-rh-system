@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label'
 import { AuthError } from 'next-auth'
 import { redirect } from 'next/navigation'
 import Image from 'next/image'
-import { Mail, Lock, AlertCircle } from 'lucide-react'
+import { Mail, Lock, AlertCircle, ArrowRight, Shield } from 'lucide-react'
 import { LoginButton } from '@/components/auth/login-button'
 
 // CAMBIO: Quitamos Promise y el await
@@ -22,34 +22,52 @@ export default async function LoginPage({
     : ""
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-linear-to-br from-slate-100 via-slate-50 to-slate-100 p-4">
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-size-[24px_24px]"></div>
+    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-100 via-blue-50/30 to-slate-100 p-4 relative overflow-hidden">
+      {/* Patrón de fondo mejorado */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#8080801a_1px,transparent_1px),linear-gradient(to_bottom,#8080801a_1px,transparent_1px)] bg-[size:24px_24px]"></div>
       
-      <Card className="w-full max-w-md relative z-10 shadow-xl border-slate-200">
-        <CardHeader className="space-y-4 pb-8">
+      {/* Círculos decorativos animados */}
+      <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-[#73C056]/10 to-transparent rounded-full blur-3xl animate-pulse"></div>
+      <div className="absolute bottom-0 left-0 w-96 h-96 bg-gradient-to-tr from-blue-500/10 to-transparent rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
+      
+      <Card className="w-full max-w-md relative z-10 shadow-2xl border-0 backdrop-blur-sm bg-white/95 overflow-hidden">
+        {/* Borde de gradiente superior */}
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#73C056] via-blue-500 to-[#73C056]"></div>
+        
+        <CardHeader className="space-y-6 pb-8 pt-10">
+          {/* Logo con contenedor mejorado */}
           <div className="flex justify-center">
-            <div className="relative w-full max-w-xs h-16 mb-4">
+            <div className="relative w-full max-w-xs h-20 mb-2 px-4">
               <Image 
                 src="/logo.png" 
                 alt="Inochem Logo" 
                 fill
-                className="object-contain"
+                className="object-contain drop-shadow-md"
                 priority
               />
             </div>
           </div>
           
-          <div className="text-center space-y-2">
-            <CardTitle className="text-3xl font-bold text-slate-900">
+          <div className="text-center space-y-3">
+            <div className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-[#73C056]/10 to-blue-500/10 rounded-full mb-2">
+              <Shield className="h-4 w-4 text-[#73C056]" />
+              <span className="text-xs font-semibold text-slate-700 uppercase tracking-wide">
+                Portal Seguro
+              </span>
+            </div>
+            
+            <CardTitle className="text-3xl font-black bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
+              Bienvenido
             </CardTitle>
            
-            <CardDescription className="text-slate-600 text-base">
-              Sistema de solicitud de vacaciones y permisos<br />Euroimmun México
+            <CardDescription className="text-slate-600 text-base font-medium leading-relaxed">
+              Sistema de solicitud de vacaciones y permisos<br />
+              <span className="text-[#73C056] font-semibold">Euroimmun México</span>
             </CardDescription>
           </div>
         </CardHeader>
 
-        <CardContent>
+        <CardContent className="pb-8">
           <form
             action={async (formData) => {
               "use server"
@@ -71,14 +89,17 @@ export default async function LoginPage({
                 throw error
               }
             }}
-            className="space-y-5"
+            className="space-y-6"
           >
+            {/* Campo Email mejorado */}
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-slate-700 font-medium">
+              <Label htmlFor="email" className="text-slate-700 font-semibold text-sm">
                 Correo Electrónico
               </Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-3 h-5 w-5 text-slate-400" />
+              <div className="relative group">
+                <div className="absolute left-3 top-3.5 h-5 w-5 text-slate-400 group-focus-within:text-[#73C056] transition-colors">
+                  <Mail className="h-5 w-5" />
+                </div>
                 <Input
                   id="email"
                   name="email"
@@ -86,17 +107,20 @@ export default async function LoginPage({
                   placeholder="tu.correo@inochem.com"
                   defaultValue="juan.empleado@inochem.com"
                   required
-                  className="pl-10 h-11 border-slate-300 focus:border-[#73C056] focus:ring-[#73C056] transition-colors"
+                  className="pl-11 h-12 border-2 border-slate-200 focus:border-[#73C056] focus:ring-2 focus:ring-[#73C056]/20 transition-all duration-200 rounded-xl font-medium"
                 />
               </div>
             </div>
 
+            {/* Campo Password mejorado */}
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-slate-700 font-medium">
+              <Label htmlFor="password" className="text-slate-700 font-semibold text-sm">
                 Contraseña
               </Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-3 h-5 w-5 text-slate-400" />
+              <div className="relative group">
+                <div className="absolute left-3 top-3.5 h-5 w-5 text-slate-400 group-focus-within:text-[#73C056] transition-colors">
+                  <Lock className="h-5 w-5" />
+                </div>
                 <Input
                   id="password"
                   name="password"
@@ -104,17 +128,20 @@ export default async function LoginPage({
                   placeholder="••••••••"
                   defaultValue="password123"
                   required
-                  className="pl-10 h-11 border-slate-300 focus:border-[#73C056] focus:ring-[#73C056] transition-colors"
+                  className="pl-11 h-12 border-2 border-slate-200 focus:border-[#73C056] focus:ring-2 focus:ring-[#73C056]/20 transition-all duration-200 rounded-xl font-medium"
                 />
               </div>
             </div>
 
+            {/* Mensaje de error mejorado */}
             {errorMessage && (
-              <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded-md flex items-start gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
-                <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
+              <div className="bg-gradient-to-r from-red-50 to-red-50/50 border-l-4 border-red-500 text-red-700 p-4 rounded-xl flex items-start gap-3 shadow-md animate-in fade-in slide-in-from-top-2 duration-300">
+                <div className="h-9 w-9 rounded-lg bg-red-100 flex items-center justify-center shrink-0">
+                  <AlertCircle className="h-5 w-5 text-red-600" />
+                </div>
                 <div>
-                  <p className="font-medium text-sm">Error de autenticación</p>
-                  <p className="text-sm">{errorMessage}</p>
+                  <p className="font-bold text-sm mb-0.5">Error de autenticación</p>
+                  <p className="text-sm font-medium">{errorMessage}</p>
                 </div>
               </div>
             )}
@@ -123,18 +150,38 @@ export default async function LoginPage({
             
           </form>
 
-          <div className="mt-6 text-center">
-            <p className="text-xs text-slate-500">
-              ¿Problemas para acceder? Contacta a Recursos Humanos
-            </p>
+          {/* Footer del formulario mejorado */}
+          <div className="mt-8 space-y-4">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-slate-200"></div>
+              </div>
+              <div className="relative flex justify-center text-xs">
+                <span className="bg-white px-3 text-slate-500 font-medium">
+                  Soporte
+                </span>
+              </div>
+            </div>
+            
+            <div className="text-center bg-slate-50 rounded-lg p-3 border border-slate-100">
+              <p className="text-xs text-slate-600 font-medium">
+                ¿Problemas para acceder?
+              </p>
+              <p className="text-xs text-[#73C056] font-semibold mt-1">
+                Contacta a Recursos Humanos
+              </p>
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      <div className="absolute bottom-4 left-0 right-0 text-center">
-        <p className="text-xs text-slate-400">
-          © 2025 eruoimmun. Todos los derechos reservados.
-        </p>
+      {/* Footer mejorado */}
+      <div className="absolute bottom-6 left-0 right-0 text-center z-10">
+        <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur-sm rounded-full shadow-sm border border-slate-200">
+          <p className="text-xs text-slate-500 font-medium">
+            © 2025 Euroimmun • Todos los derechos reservados
+          </p>
+        </div>
       </div>
     </div>
   )
