@@ -1,7 +1,7 @@
 import { differenceInYears, addYears, setYear, isBefore, format } from 'date-fns'
 import { es } from 'date-fns/locale'
 
-// Calcular días totales (Ley + Bono)
+// Calcular días totales (Ley + Bono Inochem)
 export function calculateVacationDays(entryDate: Date): number {
   const yearsWorked = differenceInYears(new Date(), entryDate)
   
@@ -20,12 +20,13 @@ export function calculateVacationDays(entryDate: Date): number {
   else if (yearsWorked >= 26 && yearsWorked <= 30) days = 30;
   else days = 32;
 
-  // Bono Inochem
+  // Bono Inochem (+5 días si tiene al menos 1 año)
   if (yearsWorked >= 1) return days + 5;
+  
   return days;
 }
 
-// NUEVA: Calcular el texto de vigencia (Ej: "13 oct 2024 - 13 oct 2025")
+// Calcular el texto de vigencia (Ej: "13 oct 2024 - 13 oct 2025")
 export function getCyclePeriod(entryDate: Date) {
   const today = new Date()
   const currentYear = today.getFullYear()

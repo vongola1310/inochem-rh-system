@@ -1,43 +1,68 @@
 import { PrismaClient } from '@prisma/client'
 import { differenceInYears } from 'date-fns'
-import { calculateVacationDays } from '@/lib/vacation-logic'
+import { calculateVacationDays } from '@/lib/vacation-logic' // Importamos tu lógica con bono
 
 const prisma = new PrismaClient()
 
-/**
- * Revisa si el empleado merece nuevos días por antigüedad.
- * Si sí, actualiza su saldo y retorna true.
- */
 export async function checkAndRenewBalance(userId: string) {
+  console.log(`[RENOVACIÓN] Iniciando chequeo para usuario ID: ${userId}`)
+
   const user = await prisma.user.findUnique({
     where: { id: userId },
     include: { balance: true }
   })
 
-  if (!user || !user.balance) return;
+  if (!user) {
+    console.log(`[RENOVACIÓN] Error: Usuario no encontrado en BD.`)
+    return
+  }
+  
+  if (!user.balance) {
+    console.log(`[RENOVACIÓN] El usuario ${user.name} no tiene tabla de balance creada.`)
+    return
+  }
 
-  // 1. Calcular antigüedad actual exacta
-  const currentYearsWorked = differenceInYears(new Date(), user.entryDate)
+  const entryDate = new Date(user.entryDate)
+  const today = new Date()
+  
+  // Años completos trabajados al día de hoy
+  const yearsCompleted = differenceInYears(today, entryDate)
 
-  // 2. Verificar si ya procesamos este año
-  // Ej: Si trabajó 2 años, y lastYearProcessed es 1, toca renovar.
-  // Si lastYearProcessed ya es 2, no hacemos nada.
-  if (currentYearsWorked > user.balance.lastYearProcessed) {
+  // ¿Cuál fue el último año que el sistema procesó?
+  const lastProcessedYear = user.balance.lastYearProcessed || 0
+
+  console.log(`[RENOVACIÓN] Datos de ${user.name}:`)
+  console.log(`   - Fecha de Ingreso: ${entryDate.toISOString()}`)
+  console.log(`   - Fecha de Hoy: ${today.toISOString()}`)
+  console.log(`   - Años Cumplidos (Calculado): ${yearsCompleted}`)
+  console.log(`   - Último Año Procesado (BD): ${lastProcessedYear}`)
+
+  // SOLO renovamos si es un año nuevo que no ha sido procesado
+  // (Esto evita sobrescribir ajustes manuales si ya se marcó el año como listo)
+  if (yearsCompleted > 0 && yearsCompleted > lastProcessedYear) {
     
-    // 3. Calcular cuántos días le tocan por este nuevo año
-    // (Usamos tu lógica de Ley + Bono Inochem)
-    const newDaysToAdd = calculateVacationDays(user.entryDate)
+    // Obtenemos días totales (Ley + Bono Inochem)
+    const newDaysToAdd = calculateVacationDays(entryDate)
 
-    console.log(`🎂 Renovando vacaciones para ${user.name}. Antigüedad: ${currentYearsWorked} años. Agregando ${newDaysToAdd} días.`)
+    console.log(`[RENOVACIÓN] DETECTADO NUEVO ANIVERSARIO. Procediendo a actualizar.`)
+    console.log(`   - Días a asignar (Ley + Bono): ${newDaysToAdd}`)
 
-    // 4. Actualizar en Base de Datos
-    await prisma.vacationBalance.update({
+    // AL SER UN NUEVO CICLO (ANIVERSARIO REAL):
+    // 1. Establecemos el nuevo techo de días totales.
+    // 2. Reiniciamos los días usados a 0 (borrón y cuenta nueva del ciclo).
+    // 3. Marcamos el año como procesado.
+    
+    const updateResult = await prisma.vacationBalance.update({
       where: { userId: user.id },
       data: {
-        totalDays: { increment: newDaysToAdd }, // Sumamos los días nuevos
-        lastYearProcessed: currentYearsWorked,  // Marcamos este año como "pagado"
+        totalDays: newDaysToAdd,
+        usedDays: 0,             
+        lastYearProcessed: yearsCompleted,
         lastUpdated: new Date()
       }
     })
+    console.log(`[RENOVACIÓN] Actualización exitosa:`, updateResult)
+  } else {
+    console.log(`[RENOVACIÓN] No se requiere actualización. (Años cumplidos ${yearsCompleted} no es mayor a procesado ${lastProcessedYear})`)
   }
 }
