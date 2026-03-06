@@ -64,11 +64,12 @@ export function BackupManager({
                     <SelectTrigger className="h-9 text-sm bg-white">
                         <SelectValue placeholder="Selecciona un encargado..." />
                     </SelectTrigger>
-                    <SelectContent>
+                    {/* AQUÍ ESTÁ LA MAGIA: max-h-[250px] y overflow-y-auto */}
+                    <SelectContent className="max-h-[250px] overflow-y-auto">
                         <SelectItem value="none" className="text-slate-500 italic">-- Nadie (Yo apruebo) --</SelectItem>
                         {employees.map(emp => (
-                            <SelectItem key={emp.id} value={emp.id}>
-                                {emp.name} <span className="text-xs text-slate-400">({emp.jobTitle})</span>
+                            <SelectItem key={emp.id} value={emp.id} className="cursor-pointer">
+                                {emp.name} <span className="text-xs text-slate-400 ml-1">({emp.jobTitle})</span>
                             </SelectItem>
                         ))}
                     </SelectContent>
@@ -97,8 +98,8 @@ export function BackupManager({
             </Button>
 
             {isActive && (
-                <div className="flex items-start gap-2 p-2 bg-orange-100 rounded text-xs text-orange-800 border border-orange-200 mt-2">
-                    <ShieldCheck className="h-4 w-4 shrink-0"/>
+                <div className="flex items-start gap-2 p-2 bg-orange-100 rounded-md text-xs text-orange-800 border border-orange-200 mt-2">
+                    <ShieldCheck className="h-4 w-4 shrink-0 mt-0.5"/>
                     <p>Actualmente las solicitudes de tu equipo se redirigen al respaldo seleccionado.</p>
                 </div>
             )}
