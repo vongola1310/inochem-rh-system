@@ -14,13 +14,57 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { 
   CalendarDays, XCircle, CheckCircle, Clock, AlertTriangle, 
   ArrowLeft, User, Briefcase, Calendar, FileText,
-  Mail, Award, BarChart3, ExternalLink, UserCog
+  Mail, Award, BarChart3, ExternalLink, UserCog, Ban, RefreshCw
 } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from "@/components/ui/button"
 import { EmployeeManagementPanel } from '@/components/admin/employee-management-panel'
 
 const prisma = new PrismaClient()
+
+// Helper para dibujar los estados con colores exactos (Sincronizado con el resto del sistema)
+const getStatusBadge = (status: string) => {
+  switch (status) {
+    case 'PENDING_BOSS':
+      return (
+        <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 font-medium px-2 py-0.5 whitespace-nowrap">
+          <Clock className="w-3 h-3 mr-1.5"/> Firma Jefe
+        </Badge>
+      )
+    case 'PENDING_HR':
+      return (
+        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 font-medium px-2 py-0.5 whitespace-nowrap">
+          <Clock className="w-3 h-3 mr-1.5"/> Pendiente RH
+        </Badge>
+      )
+    case 'APPROVED':
+      return (
+        <Badge className="bg-[#73C056]/10 text-[#73C056] border-[#73C056]/30 hover:bg-[#73C056]/20 font-medium px-2 py-0.5 whitespace-nowrap shadow-none">
+          <CheckCircle className="w-3 h-3 mr-1.5"/> Aprobado
+        </Badge>
+      )
+    case 'REJECTED':
+      return (
+        <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 font-medium px-2 py-0.5 whitespace-nowrap">
+          <XCircle className="w-3 h-3 mr-1.5"/> Rechazado
+        </Badge>
+      )
+    case 'CANCELLED':
+      return (
+        <Badge variant="outline" className="bg-slate-100 text-slate-500 border-slate-200 font-medium px-2 py-0.5 whitespace-nowrap">
+          <Ban className="w-3 h-3 mr-1.5"/> Cancelado
+        </Badge>
+      )
+    case 'CANCELLATION_REQUESTED':
+        return (
+          <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 font-medium px-2 py-0.5 whitespace-nowrap">
+            <RefreshCw className="w-3 h-3 mr-1.5"/> Pide Cancelar
+          </Badge>
+        )
+    default:
+      return <Badge variant="secondary">{status}</Badge>
+  }
+}
 
 // Ajuste para Next.js 14: params no es una promesa
 export default async function EmployeeDetailPage({ params }: { params: { id: string } }) {
@@ -363,17 +407,8 @@ export default async function EmployeeDetailPage({ params }: { params: { id: str
                           </TableCell>
                           
                           <TableCell>
-                            <Badge 
-                              className={`shadow-none font-medium border ${
-                                req.status === 'APPROVED' 
-                                  ? 'bg-[#73C056]/10 text-[#73C056] border-[#73C056]/30 hover:bg-[#73C056]/20' 
-                                  : req.status === 'REJECTED' 
-                                  ? 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100' 
-                                  : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
-                              }`}
-                            >
-                              {req.status === 'APPROVED' ? 'Aprobado' : req.status === 'REJECTED' ? 'Rechazado' : 'Pendiente'}
-                            </Badge>
+                            {/* APLICAMOS LA FUNCIÓN GETSTATUSBADGE AQUÍ */}
+                            {getStatusBadge(req.status)}
                           </TableCell>
                           
                           <TableCell className="max-w-[200px]">
