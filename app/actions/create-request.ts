@@ -38,16 +38,14 @@ function countBusinessDays(start: Date, end: Date, holidaysSet: Set<string>, bir
 }
 
 // ============================================================
-// NUEVO: Helper para calcular el próximo aniversario del empleado
+// Helper: Calcula el próximo aniversario del empleado
 // ============================================================
 function getNextAnniversary(entryDate: Date): Date {
     const today = startOfDay(new Date());
     const entry = new Date(entryDate);
     
-    // Aniversario de este año
     const anniversaryThisYear = startOfDay(setYear(entry, today.getFullYear()));
     
-    // Si ya pasó el aniversario de este año, el próximo es el del año siguiente
     if (isBefore(anniversaryThisYear, today)) {
         return startOfDay(setYear(entry, today.getFullYear() + 1));
     }
@@ -56,45 +54,30 @@ function getNextAnniversary(entryDate: Date): Date {
 }
 
 // ============================================================
-// NUEVO: Verifica si aplica auto-aprobación por vencimiento
-// Reglas:
-//   1. Faltan ≤ 3 días hábiles para el aniversario
-//   2. Días pedidos ≤ saldo disponible del periodo actual
-//   3. Las vacaciones NO cruzan al periodo nuevo (terminan antes del aniversario)
+// Helper: ¿Estamos a ≤ 3 días hábiles del aniversario?
 // ============================================================
-function shouldAutoApproveExpiring(
-    startDate: Date,
-    returnDate: Date,
+function isNearAnniversary(
     entryDate: Date,
     holidaySet: Set<string>,
-    birthDate: Date | null | undefined,
-    currentBalance: number,
-    daysRequested: number
-): { autoApprove: boolean; reason?: string } {
-    
+    birthDate: Date | null | undefined
+): { isNear: boolean; businessDaysLeft: number; anniversaryDate: Date } {
     const today = startOfDay(new Date());
     const nextAnniversary = getNextAnniversary(entryDate);
+    const businessDaysLeft = countBusinessDays(today, nextAnniversary, holidaySet, birthDate);
     
-    // 1. ¿Faltan ≤ 3 días hábiles para el aniversario?
-    const businessDaysToAnniversary = countBusinessDays(today, nextAnniversary, holidaySet, birthDate);
-    
-    if (businessDaysToAnniversary > 3) {
-        return { autoApprove: false, reason: `Faltan ${businessDaysToAnniversary} días hábiles para el aniversario (se requieren ≤ 3).` };
-    }
-    
-    // 2. ¿Tiene saldo suficiente?
-    if (daysRequested > currentBalance) {
-        return { autoApprove: false, reason: `Saldo insuficiente: tiene ${currentBalance}, pide ${daysRequested}.` };
-    }
-    
-    // 3. ¿Las vacaciones terminan ANTES del aniversario? (no cruzan al periodo nuevo)
-    //    returnDate es la fecha de regreso (el último día de vacaciones + 1 en tu lógica de conteo)
-    //    Verificamos que la fecha de retorno no pase del aniversario
-    if (!isBefore(returnDate, nextAnniversary) && differenceInCalendarDays(returnDate, nextAnniversary) > 0) {
-        return { autoApprove: false, reason: 'Las vacaciones cruzan al periodo nuevo.' };
-    }
-    
-    return { autoApprove: true };
+    return {
+        isNear: businessDaysLeft <= 3,
+        businessDaysLeft,
+        anniversaryDate: nextAnniversary
+    };
+}
+
+// ============================================================
+// Helper: Compara fechas como strings YYYY-MM-DD
+// Esto evita problemas de timezone al comparar objetos Date
+// ============================================================
+function toDateStr(d: Date): string {
+    return d.toISOString().split('T')[0];
 }
 
 
@@ -125,9 +108,12 @@ export async function createRequest(prevState: any, formData: FormData) {
       return { success: false, message: "No tienes un jefe asignado." }
     }
 
+    // Obtenemos festivos una sola vez
+    const holidays = await prisma.holiday.findMany();
+    const holidaySet = new Set(holidays.map(h => h.date.toISOString().split('T')[0]));
+
     // --- DETECCIÓN DE CRUCE DE ANIVERSARIO ---
     let splitDate: Date | null = null;
-    let nextAnniversary: Date | null = null;
 
     if (type === 'VACATION') {
         const today = new Date();
@@ -137,17 +123,38 @@ export async function createRequest(prevState: any, formData: FormData) {
 
         if (isBefore(startDate, anniversaryThisYear) && isBefore(anniversaryThisYear, returnDate)) {
             splitDate = anniversaryThisYear;
-            nextAnniversary = anniversaryThisYear;
         }
     }
 
-    // Obtenemos festivos una sola vez
-    const holidays = await prisma.holiday.findMany();
-    const holidaySet = new Set(holidays.map(h => h.date.toISOString().split('T')[0]));
+    // ============================================================
+    // Verificar proximidad al aniversario (se usa en CASO A y B)
+    // ============================================================
+    const anniversaryCheck = (type === 'VACATION') 
+        ? isNearAnniversary(user.entryDate, holidaySet, user.birthDate)
+        : null;
+
+    // =============================================================
+    // DEBUG: Revisa estos logs en la terminal de Next.js
+    // Quitar cuando ya funcione correctamente
+    // =============================================================
+    if (type === 'VACATION' && anniversaryCheck) {
+        console.log('========== DEBUG AUTO-APROBACIÓN ==========');
+        console.log('Hoy (ISO):', toDateStr(startOfDay(new Date())));
+        console.log('Aniversario (ISO):', toDateStr(anniversaryCheck.anniversaryDate));
+        console.log('Días hábiles al aniversario:', anniversaryCheck.businessDaysLeft);
+        console.log('¿Cerca? (≤3):', anniversaryCheck.isNear);
+        console.log('startDate (ISO):', toDateStr(startDate));
+        console.log('returnDate (ISO):', toDateStr(returnDate));
+        console.log('splitDate (ISO):', splitDate ? toDateStr(splitDate) : 'null (no hay cruce)');
+        console.log('Balance - total:', user.balance?.totalDays, 'used:', user.balance?.usedDays, 'pending:', user.balance?.pendingDays);
+        console.log('============================================');
+    }
 
     // --- LOGICA DE PROCESAMIENTO ---
     
+    // ================================================================
     // CASO A: SOLICITUD NORMAL (Sin cruce de aniversario)
+    // ================================================================
     if (!splitDate) {
         let daysRequested = 0;
         if (type === 'VACATION') {
@@ -159,35 +166,35 @@ export async function createRequest(prevState: any, formData: FormData) {
             }
 
             // ============================================================
-            // NUEVO: Evaluar auto-aprobación por vencimiento de periodo
+            // AUTO-APROBACIÓN POR VENCIMIENTO (CASO A)
+            // Condiciones:
+            //   1. ≤ 3 días hábiles al aniversario (anniversaryCheck.isNear)
+            //   2. Tiene saldo suficiente (ya validado arriba)
+            //   3. returnDate NO pasa del aniversario (comparación por string YYYY-MM-DD)
             // ============================================================
-            const autoApprovalCheck = shouldAutoApproveExpiring(
-                startDate,
-                returnDate,
-                user.entryDate,
-                holidaySet,
-                user.birthDate,
-                currentBalance,
-                daysRequested
-            );
-
-            if (autoApprovalCheck.autoApprove) {
-                // AUTO-APROBAR: Crear solicitud directamente como APPROVED
-                await createAutoApprovedRequest(
-                    user,
-                    startDate,
-                    returnDate,
-                    daysRequested,
-                    observations
-                );
+            if (anniversaryCheck?.isNear && daysRequested > 0) {
+                const returnStr = toDateStr(returnDate);
+                const anniversaryStr = toDateStr(anniversaryCheck.anniversaryDate);
                 
-                revalidatePath('/');
-                return { 
-                    success: true, 
-                    message: `Solicitud auto-aprobada (${daysRequested} días). Tu periodo vence pronto y el saldo fue descontado automáticamente.` 
-                };
+                // returnDate es el día de regreso al trabajo (exclusivo)
+                // Si returnDate <= aniversario, las vacaciones caen en el periodo viejo
+                const vacationEndsBeforeAnniversary = returnStr <= anniversaryStr;
+
+                console.log('DEBUG CASO A - return:', returnStr, 'aniversario:', anniversaryStr, 'autoApprove:', vacationEndsBeforeAnniversary);
+
+                if (vacationEndsBeforeAnniversary) {
+                    await createAutoApprovedRequest(
+                        user, startDate, returnDate, daysRequested, observations
+                    );
+                    
+                    revalidatePath('/');
+                    return { 
+                        success: true, 
+                        message: `Solicitud auto-aprobada (${daysRequested} día${daysRequested > 1 ? 's' : ''}). Tu periodo vence pronto y el saldo fue descontado automáticamente.` 
+                    };
+                }
             }
-            // Si no aplica auto-aprobación, continúa flujo normal ↓
+            // Si no aplica, continúa flujo normal ↓
 
         } else {
              if (type === 'PERMIT_ABSENCE') daysRequested = 1;
@@ -200,7 +207,11 @@ export async function createRequest(prevState: any, formData: FormData) {
         return { success: true, message: "Solicitud enviada correctamente." }
     }
 
-    // CASO B: SOLICITUD DIVIDIDA (Vacaciones Puente)
+    // ================================================================
+    // CASO B: SOLICITUD DIVIDIDA (Vacaciones cruzan el aniversario)
+    //   Parte 1 (periodo viejo): Auto-aprobar SI estamos cerca del aniversario
+    //   Parte 2 (periodo nuevo): Flujo normal con jefe + RH
+    // ================================================================
     else {
         const daysPart1 = countBusinessDays(startDate, splitDate, holidaySet, user.birthDate);
         const daysPart2 = countBusinessDays(splitDate, returnDate, holidaySet, user.birthDate);
@@ -210,12 +221,41 @@ export async function createRequest(prevState: any, formData: FormData) {
             return { success: false, message: `Saldo insuficiente para el periodo actual. Tienes ${currentBalance} días antes de tu aniversario y necesitas ${daysPart1}.` }
         }
 
-        const fakeOldEntryDate = setYear(new Date(user.entryDate), new Date(user.entryDate).getFullYear() - 1);
-        const projectedDays = calculateVacationDays(user.entryDate) + 2;
-        
+        console.log('DEBUG CASO B - part1:', daysPart1, 'part2:', daysPart2, 'nearAnniversary:', anniversaryCheck?.isNear);
+
+        // ============================================================
+        // ¿Parte 1 se auto-aprueba?
+        // La Parte 1 SIEMPRE cae antes del aniversario (por definición del split)
+        // Solo verificamos: estamos cerca + tiene saldo
+        // ============================================================
+        const autoApprovePart1 = anniversaryCheck?.isNear && daysPart1 > 0 && daysPart1 <= currentBalance;
+
+        if (autoApprovePart1) {
+            console.log('DEBUG CASO B - Auto-aprobando Parte 1, Parte 2 va con jefe');
+
+            // Parte 1: Auto-aprobar (periodo viejo, silencioso)
+            await createAutoApprovedRequest(
+                user, startDate, splitDate!, daysPart1,
+                `${observations} (Parte 1: Cierre de ciclo)`
+            );
+
+            // Parte 2: Flujo normal con jefe (periodo nuevo)
+            await createSingleRequest(
+                user, type, splitDate!, returnDate, daysPart2,
+                `${observations} (Parte 2: Nuevo ciclo)`, permitTime, false
+            );
+
+            revalidatePath('/');
+            return { 
+                success: true, 
+                message: `Se generaron 2 solicitudes. Parte 1 (${daysPart1} día${daysPart1 > 1 ? 's' : ''}) auto-aprobada por vencimiento. Parte 2 (${daysPart2} día${daysPart2 > 1 ? 's' : ''}) enviada a tu jefe.` 
+            };
+        }
+
+        // Si NO estamos cerca del aniversario, flujo original (ambas pasan por jefe)
         await prisma.$transaction(async (tx) => {
-            await createSingleRequestTx(tx, user, type, startDate, splitDate, daysPart1, `${observations} (Parte 1: Cierre de ciclo)`, permitTime, true);
-            await createSingleRequestTx(tx, user, type, splitDate, returnDate, daysPart2, `${observations} (Parte 2: Nuevo ciclo)`, permitTime, false);
+            await createSingleRequestTx(tx, user, type, startDate, splitDate!, daysPart1, `${observations} (Parte 1: Cierre de ciclo)`, permitTime, true);
+            await createSingleRequestTx(tx, user, type, splitDate!, returnDate, daysPart2, `${observations} (Parte 2: Nuevo ciclo)`, permitTime, false);
         });
 
         revalidatePath('/')
@@ -230,11 +270,7 @@ export async function createRequest(prevState: any, formData: FormData) {
 
 
 // ============================================================
-// NUEVO: Crear solicitud auto-aprobada por vencimiento
-// - Estado directo: APPROVED (salta PENDING_BOSS y PENDING_HR)
-// - Descuenta de usedDays inmediatamente
-// - Registra approvedBy como "SYSTEM_AUTO_EXPIRING"
-// - Sin notificación a jefe ni RH (flujo silencioso)
+// Crear solicitud auto-aprobada por vencimiento
 // ============================================================
 async function createAutoApprovedRequest(
     user: any,
@@ -244,7 +280,6 @@ async function createAutoApprovedRequest(
     observations: string
 ) {
     await prisma.$transaction(async (tx) => {
-        // 1. Crear la solicitud ya aprobada
         await tx.request.create({
             data: {
                 userId: user.id,
@@ -255,19 +290,17 @@ async function createAutoApprovedRequest(
                 daysRequested: daysRequested,
                 observations: `${observations} [Auto-aprobado por vencimiento de periodo - SYSTEM_AUTO_EXPIRING]`,
                 permitTime: null,
-                approvedByBoss: true,           // Salta aprobación de jefe
+                approvedByBoss: true,
                 bossApprovalDate: new Date(),
-                approvedByHR: true,             // Salta aprobación de RH
+                approvedByHR: true,
                 hrApprovalDate: new Date(),
             }
         });
 
-        // 2. Descontar directamente de usedDays (como hace hr-approve.ts)
         await tx.vacationBalance.update({
             where: { userId: user.id },
             data: {
                 usedDays: { increment: daysRequested }
-                // NO tocamos pendingDays porque nunca pasó por pending
             }
         });
     });
