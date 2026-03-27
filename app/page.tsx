@@ -85,6 +85,20 @@ export default async function Home() {
   const nextCycleEnd = addYears(nextCycleStart, 1)
   const nextPeriodTotalDays = calculateVacationDays(user.entryDate)
 
+  // Contar días ya pedidos del próximo periodo (aprobados + pendientes)
+  // Busca solicitudes que inicien DESPUÉS del aniversario y no estén canceladas/rechazadas
+  const futureRequests = await prisma.request.findMany({
+    where: {
+      userId: user.id,
+      type: 'VACATION',
+      startDate: { gte: nextCycleStart },
+      status: { in: ['APPROVED', 'PENDING_BOSS', 'PENDING_HR'] }
+    },
+    select: { daysRequested: true }
+  })
+  const nextPeriodUsedDays = futureRequests.reduce((sum, r) => sum + r.daysRequested, 0)
+  const nextPeriodAvailable = nextPeriodTotalDays - nextPeriodUsedDays
+
   const isManager = user.subordinates.length > 0;
   const initials = user.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
 
@@ -245,13 +259,19 @@ export default async function Home() {
                   <p className="text-white/60 text-[10px] font-semibold uppercase tracking-wider mb-1">Próximo periodo</p>
                   <div className="flex items-baseline gap-1 justify-center">
                     <span className="text-3xl lg:text-4xl font-bold text-white/80">
-                      {nextPeriodTotalDays}
+                      {nextPeriodAvailable}
                     </span>
                     <span className="text-white/40 text-xs">días</span>
                   </div>
-                  <p className="text-white/40 text-[10px] mt-1">
-                    Desde {format(nextCycleStart, "d MMM yy", { locale: es })}
-                  </p>
+                  {nextPeriodUsedDays > 0 ? (
+                    <p className="text-yellow-200/70 text-[10px] mt-1">
+                      {nextPeriodUsedDays} ya solicitado{nextPeriodUsedDays > 1 ? 's' : ''} de {nextPeriodTotalDays}
+                    </p>
+                  ) : (
+                    <p className="text-white/40 text-[10px] mt-1">
+                      {nextPeriodTotalDays} días desde {format(nextCycleStart, "d MMM yy", { locale: es })}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
