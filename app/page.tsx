@@ -13,6 +13,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import Image from 'next/image'
 import Link from 'next/link'
 import { checkAndRenewBalance } from '@/lib/check-renewal'
+import { calculateVacationDays } from '@/lib/vacation-logic'
 import { format, addYears, setYear, isBefore } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { BackupManager } from '@/components/dashboard/backup-manager'
@@ -78,6 +79,11 @@ export default async function Home() {
     cycleStart = addYears(cycleStart, -1)
   }
   const cycleEnd = addYears(cycleStart, 1)
+
+  // ─── Cálculo del próximo periodo ───
+  const nextCycleStart = cycleEnd
+  const nextCycleEnd = addYears(nextCycleStart, 1)
+  const nextPeriodTotalDays = calculateVacationDays(user.entryDate)
 
   const isManager = user.subordinates.length > 0;
   const initials = user.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
@@ -213,32 +219,74 @@ export default async function Home() {
                 </p>
               </div>
 
-              <div className="text-left sm:text-right">
-                <div className="flex items-baseline gap-2 sm:justify-end">
-                  <span className={`text-4xl lg:text-5xl font-bold ${availableDays < 0 ? 'text-red-200' : 'text-white'}`}>
-                    {availableDays}
-                  </span>
-                  <span className="text-white/70 text-sm font-medium">días disponibles</span>
-                </div>
-                {pendingDays > 0 && (
-                  <div className="flex items-center gap-2 sm:justify-end mt-1.5">
-                    <div className="inline-flex items-center gap-1.5 bg-white/15 backdrop-blur-sm rounded-lg px-3 py-1.5">
-                      <Clock className="h-3.5 w-3.5 text-yellow-200" />
-                      <span className="text-yellow-100 text-sm font-semibold">{pendingDays}</span>
-                      <span className="text-white/70 text-xs font-medium">días pendientes por aprobar</span>
-                    </div>
+              <div className="flex items-center gap-3 sm:gap-4">
+                {/* Periodo actual */}
+                <div className="text-center bg-white/15 backdrop-blur-sm rounded-xl px-4 py-3 min-w-[120px]">
+                  <p className="text-white/60 text-[10px] font-semibold uppercase tracking-wider mb-1">Periodo actual</p>
+                  <div className="flex items-baseline gap-1 justify-center">
+                    <span className={`text-3xl lg:text-4xl font-bold ${availableDays < 0 ? 'text-red-200' : 'text-white'}`}>
+                      {availableDays}
+                    </span>
+                    <span className="text-white/50 text-xs">días</span>
                   </div>
-                )}
+                  {pendingDays > 0 && (
+                    <div className="flex items-center gap-1 justify-center mt-1">
+                      <Clock className="h-3 w-3 text-yellow-200" />
+                      <span className="text-yellow-100 text-[11px] font-medium">{pendingDays} por aprobar</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Separador */}
+                <div className="h-12 w-px bg-white/20" />
+
+                {/* Próximo periodo */}
+                <div className="text-center bg-white/10 backdrop-blur-sm rounded-xl px-4 py-3 min-w-[120px]">
+                  <p className="text-white/60 text-[10px] font-semibold uppercase tracking-wider mb-1">Próximo periodo</p>
+                  <div className="flex items-baseline gap-1 justify-center">
+                    <span className="text-3xl lg:text-4xl font-bold text-white/80">
+                      {nextPeriodTotalDays}
+                    </span>
+                    <span className="text-white/40 text-xs">días</span>
+                  </div>
+                  <p className="text-white/40 text-[10px] mt-1">
+                    Desde {format(nextCycleStart, "d MMM yy", { locale: es })}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="px-6 py-3 lg:px-8 flex flex-wrap items-center gap-x-6 gap-y-1 text-xs text-slate-500 bg-slate-50/50 border-t border-slate-100">
+          <div className="px-6 py-3 lg:px-8 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs bg-slate-50/50 border-t border-slate-100">
+            {/* Desglose de saldo */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-slate-400">Total:</span>
+              <span className="font-bold text-slate-700">{totalDays}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-slate-400">Usados:</span>
+              <span className="font-bold text-slate-700">{usedDays}</span>
+            </div>
+            {pendingDays > 0 && (
+              <div className="flex items-center gap-1.5">
+                <Clock className="h-3 w-3 text-orange-400" />
+                <span className="text-orange-500">Por aprobar:</span>
+                <span className="font-bold text-orange-600">{pendingDays}</span>
+              </div>
+            )}
+            <div className="w-px h-4 bg-slate-200 hidden sm:block" />
             <div className="flex items-center gap-1.5">
               <Calendar className="h-3.5 w-3.5 text-[#73C056]" />
-              <span className="text-slate-400">Vigencia:</span>
+              <span className="text-slate-400">Vigencia actual:</span>
               <span className="font-medium text-slate-700">
                 {format(cycleStart, "d MMM yyyy", { locale: es })} — {format(cycleEnd, "d MMM yyyy", { locale: es })}
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Calendar className="h-3.5 w-3.5 text-slate-400" />
+              <span className="text-slate-400">Próxima:</span>
+              <span className="font-medium text-slate-500">
+                {format(nextCycleStart, "d MMM yyyy", { locale: es })} — {format(nextCycleEnd, "d MMM yyyy", { locale: es })}
               </span>
             </div>
             <div className="flex items-center gap-1.5">
@@ -248,7 +296,6 @@ export default async function Home() {
                 {format(entryDate, "d MMM yyyy", { locale: es })}
               </span>
             </div>
-
           </div>
         </div>
 

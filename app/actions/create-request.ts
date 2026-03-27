@@ -94,6 +94,38 @@ export async function createRequest(prevState: any, formData: FormData) {
             daysRequested = countBusinessDays(startDate, returnDate, holidaySet, user.birthDate);
             
             const currentBalance = (user.balance?.totalDays || 0) - (user.balance?.usedDays || 0) - (user.balance?.pendingDays || 0);
+
+            // ============================================================
+            // CASO C: Vacaciones COMPLETAMENTE en el periodo futuro
+            // Ejemplo: Hoy es marzo, aniversario es 19 junio, pide julio.
+            // Saldo actual = 0 pero después del aniversario tendrá días.
+            // Detectamos si: hoy < aniversario Y startDate >= aniversario
+            // ============================================================
+            const isFullyInFuturePeriod = isBefore(today, anniversaryThisYear) && 
+                                          !isBefore(startDate, anniversaryThisYear);
+            
+            if (isFullyInFuturePeriod) {
+                // Calcular cuántos días tendrá después de su aniversario
+                const projectedTotalDays = calculateVacationDays(user.entryDate);
+                
+                if (daysRequested > projectedTotalDays) {
+                    return { success: false, message: `Saldo insuficiente para el próximo periodo. Tendrás ${projectedTotalDays} días después de tu aniversario y pides ${daysRequested}.` }
+                }
+
+                // Flujo normal con jefe, NO auto-aprobación (hay tiempo)
+                // updateBalance = false porque no afecta el saldo del periodo actual
+                await createSingleRequest(user, type, startDate, returnDate, daysRequested, 
+                    `${observations}\n[SISTEMA]: Solicitud anticipada para el periodo futuro (post-aniversario).`, 
+                    permitTime, false, false);
+                
+                revalidatePath('/');
+                return { 
+                    success: true, 
+                    message: `Solicitud enviada. Estos ${daysRequested} días se descontarán de tu próximo periodo (${projectedTotalDays} días después de tu aniversario).` 
+                }
+            }
+
+            // Validación normal del saldo actual
             if (daysRequested > currentBalance) {
                 return { success: false, message: `Saldo insuficiente. Tienes ${currentBalance} días y pides ${daysRequested}.` }
             }
