@@ -13,7 +13,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import Image from 'next/image'
 import Link from 'next/link'
 import { checkAndRenewBalance } from '@/lib/check-renewal'
-import { calculateVacationDays } from '@/lib/vacation-logic'
 import { format, addYears, setYear, isBefore } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { BackupManager } from '@/components/dashboard/backup-manager'
@@ -80,10 +79,33 @@ export default async function Home() {
   }
   const cycleEnd = addYears(cycleStart, 1)
 
-  // ─── Cálculo del próximo periodo ───
+  // ─── Cálculo del próximo periodo (con antigüedad correcta) ───
   const nextCycleStart = cycleEnd
   const nextCycleEnd = addYears(nextCycleStart, 1)
-  const nextPeriodTotalDays = calculateVacationDays(user.entryDate)
+  
+  // Años de antigüedad que tendrá al llegar al próximo aniversario
+  // nextCycleStart comparte mes/día con entryDate, así que la resta de años es exacta
+  const nextYearsWorked = nextCycleStart.getFullYear() - entryDate.getFullYear()
+  
+  // Tabla LFT + Bono Inochem
+  function getDaysByYears(years: number): number {
+    if (years < 1) return 0;
+    let days = 0;
+    if (years === 1) days = 12;
+    else if (years === 2) days = 14;
+    else if (years === 3) days = 16;
+    else if (years === 4) days = 18;
+    else if (years === 5) days = 20;
+    else if (years >= 6 && years <= 10) days = 22;
+    else if (years >= 11 && years <= 15) days = 24;
+    else if (years >= 16 && years <= 20) days = 26;
+    else if (years >= 21 && years <= 25) days = 28;
+    else if (years >= 26 && years <= 30) days = 30;
+    else days = 32;
+    return days + 5; // Bono Inochem
+  }
+  
+  const nextPeriodTotalDays = getDaysByYears(nextYearsWorked)
 
   // Contar días ya pedidos del próximo periodo (aprobados + pendientes)
   // Busca solicitudes que inicien DESPUÉS del aniversario y no estén canceladas/rechazadas
