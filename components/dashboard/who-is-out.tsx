@@ -19,7 +19,7 @@ export async function WhoIsOutCard() {
 
   const requests = await prisma.request.findMany({
     where: {
-      status: 'APPROVED',
+      status: { in: ['APPROVED', 'PENDING_HR'] },
       type: 'VACATION',
       returnDate: { gte: today },
       startDate: { lte: nextTwoWeeks },
