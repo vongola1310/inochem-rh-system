@@ -55,21 +55,18 @@ export async function syncAllBalances(formData?: FormData) {
       let reason = "";
 
       if (yearsCompleted > 0) {
-          // CASO 1: Fecha Cumplida (Esmeralda)
+          // CASO 1: Fecha Cumplida
           if (isAnniversaryPassed) {
-              // Si la fecha ya pasó, el estado DEBE ser perfecto para el nuevo ciclo.
-              // Debe tener el año actualizado, el total correcto y 0 usados (borrón y cuenta nueva).
-              // Si CUALQUIERA de estos falla, forzamos el reinicio.
-              if (lastProcessed !== yearsCompleted || currentTotal !== targetTotal || currentUsed !== 0) {
+              // Solo renovamos si el ciclo NO ha sido inicializado todavía para este año.
+              // Una vez que lastProcessed === yearsCompleted y totalDays === targetTotal,
+              // el ciclo está listo y NO se debe tocar (aunque tenga usedDays > 0, eso es normal).
+              if (lastProcessed !== yearsCompleted || currentTotal !== targetTotal) {
                   shouldUpdate = true;
                   reason = "Aniversario Cumplido -> Normalizar Ciclo";
               }
           }
-          // CASO 2: Fecha Futura (Karen)
+          // CASO 2: Fecha Futura
           else {
-              // Aún no cumple años. 
-              // Solo actualizamos si tiene un retraso de años anteriores.
-              // Si lastProcessed == yearsCompleted, asumimos que su ciclo actual (anterior al cumple) es válido y NO LA TOCAMOS.
               if (lastProcessed < yearsCompleted) {
                    shouldUpdate = true;
                    reason = "Actualización pendiente de ciclo anterior";
