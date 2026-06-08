@@ -7,8 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { ArrowLeft, FileText, CheckCircle, XCircle, Clock, Users, ExternalLink } from 'lucide-react'
-import { format } from 'date-fns'
-import { es } from 'date-fns/locale'
+import { formatUTC, formatMXTime, formatMXDate } from '@/lib/format-date'
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 
 const prisma = new PrismaClient()
@@ -143,8 +142,8 @@ export default async function TeamHistoryPage() {
                                             </div>
                                         </TableCell>
                                         <TableCell className="text-sm text-slate-600">
-                                            {format(req.startDate, "d 'de' MMM", { locale: es })} 
-                                            {req.returnDate && req.type === 'VACATION' && ` - ${format(req.returnDate, "d 'de' MMM", { locale: es })}`}
+                                            {formatUTC(req.startDate, "d 'de' MMM")} 
+                                            {req.returnDate && req.type === 'VACATION' && ` - ${formatUTC(req.returnDate, "d 'de' MMM")}`}
                                         </TableCell>
                                         <TableCell className="text-center">
                                             <Badge variant="secondary" className="font-normal bg-slate-100 text-slate-700">

@@ -15,6 +15,7 @@ import Link from 'next/link'
 import { checkAndRenewBalance } from '@/lib/check-renewal'
 import { format, addYears, setYear, isBefore } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { formatUTC } from '@/lib/format-date'
 import { BackupManager } from '@/components/dashboard/backup-manager'
 import { TeamCard } from '@/components/dashboard/team-card'
 import { WhoIsOutCard } from '@/components/dashboard/who-is-out'
@@ -291,7 +292,7 @@ export default async function Home() {
                     </p>
                   ) : (
                     <p className="text-white/40 text-[10px] mt-1">
-                      {nextPeriodTotalDays} días desde {format(nextCycleStart, "d MMM yy", { locale: es })}
+                      {nextPeriodTotalDays} días desde {formatUTC(nextCycleStart, "d MMM yy")}
                     </p>
                   )}
                 </div>
@@ -321,21 +322,21 @@ export default async function Home() {
               <Calendar className="h-3.5 w-3.5 text-[#73C056]" />
               <span className="text-slate-400">Vigencia actual:</span>
               <span className="font-medium text-slate-700">
-                {format(cycleStart, "d MMM yyyy", { locale: es })} — {format(cycleEnd, "d MMM yyyy", { locale: es })}
+                {formatUTC(cycleStart, "d MMM yyyy")} — {formatUTC(cycleEnd, "d MMM yyyy")}
               </span>
             </div>
             <div className="flex items-center gap-1.5">
               <Calendar className="h-3.5 w-3.5 text-slate-400" />
               <span className="text-slate-400">Próxima:</span>
               <span className="font-medium text-slate-500">
-                {format(nextCycleStart, "d MMM yyyy", { locale: es })} — {format(nextCycleEnd, "d MMM yyyy", { locale: es })}
+                {formatUTC(nextCycleStart, "d MMM yyyy")} — {formatUTC(nextCycleEnd, "d MMM yyyy")}
               </span>
             </div>
             <div className="flex items-center gap-1.5">
               <Briefcase className="h-3.5 w-3.5 text-[#73C056]" />
               <span className="text-slate-400">Ingreso:</span>
               <span className="font-medium text-slate-700">
-                {format(entryDate, "d MMM yyyy", { locale: es })}
+                {formatUTC(entryDate, "d MMM yyyy")}
               </span>
             </div>
           </div>
@@ -385,8 +386,8 @@ export default async function Home() {
                       const initial = req.user.name.charAt(0).toUpperCase()
                       const typeLabel = req.type === 'VACATION' ? 'Vacaciones' : 'Permiso'
                       const dateLabel = req.type === 'VACATION' && req.startDate
-                        ? format(new Date(req.startDate), "d MMM", { locale: es })
-                        : format(new Date(req.startDate), "d MMM", { locale: es })
+                        ? formatUTC(new Date(req.startDate), "d MMM")
+                        : formatUTC(new Date(req.startDate), "d MMM")
 
                       return (
                         <Link

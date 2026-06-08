@@ -1,7 +1,8 @@
 'use server'
 
 import { PrismaClient } from '@prisma/client'
-import { format, differenceInYears } from 'date-fns'
+import { differenceInYears } from 'date-fns'
+import { formatUTC, formatMXTime, formatMXDate } from '@/lib/format-date'
 import { getCyclePeriod } from '@/lib/vacation-logic'
 
 const prisma = new PrismaClient()
@@ -67,7 +68,7 @@ export async function getBalanceReport(
       "Nombre Completo": emp.name,
       "Puesto": emp.jobTitle,
       "Jefe Inmediato": emp.boss?.name || 'Dirección',
-      "Fecha Ingreso": format(new Date(emp.entryDate), 'dd/MM/yyyy'),
+      "Fecha Ingreso": formatUTC(new Date(emp.entryDate), 'dd/MM/yyyy'),
       "Antigüedad": `${antiquity} años`,
       "Vigencia Actual": period.label,
       "Días Totales": total,
@@ -108,13 +109,13 @@ export async function getMovementReport(startDateStr: string, endDateStr: string
     "Folio": req.id.slice(-6),
     "Empleado": req.user.name,
     "Tipo Solicitud": req.type === 'VACATION' ? 'Vacaciones' : 'Permiso',
-    "Fecha Solicitud": format(new Date(req.createdAt), 'dd/MM/yyyy HH:mm'),
-    "Fecha Inicio": format(new Date(req.startDate), 'dd/MM/yyyy'),
-    "Fecha Fin": req.returnDate ? format(new Date(req.returnDate), 'dd/MM/yyyy') : 'N/A',
+    "Fecha Solicitud": formatMXTime(new Date(req.createdAt)),
+    "Fecha Inicio": formatUTC(new Date(req.startDate), 'dd/MM/yyyy'),
+    "Fecha Fin": req.returnDate ? formatUTC(new Date(req.returnDate), 'dd/MM/yyyy') : 'N/A',
     "Días/Horas": req.type === 'VACATION' ? req.daysRequested : (req.permitTime || '1 día'),
     "Estado Final": req.status,
     "Observaciones": req.observations || '-',
-    "Aprobado por Jefe": req.approvedByBoss && req.bossApprovalDate ? format(new Date(req.bossApprovalDate), 'dd/MM/yyyy') : 'Pendiente',
-    "Validado por RH": req.approvedByHR && req.hrApprovalDate ? format(new Date(req.hrApprovalDate), 'dd/MM/yyyy') : 'Pendiente',
+    "Aprobado por Jefe": req.approvedByBoss && req.bossApprovalDate ? formatUTC(new Date(req.bossApprovalDate), 'dd/MM/yyyy') : 'Pendiente',
+    "Validado por RH": req.approvedByHR && req.hrApprovalDate ? formatUTC(new Date(req.hrApprovalDate), 'dd/MM/yyyy') : 'Pendiente',
   }))
 }

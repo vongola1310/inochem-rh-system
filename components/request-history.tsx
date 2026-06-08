@@ -1,6 +1,5 @@
 import { prisma } from '@/lib/prisma' // Usamos el Singleton para evitar errores de conexión
-import { format } from 'date-fns'
-import { es } from 'date-fns/locale'
+import { formatUTC, formatMXTime, formatMXDate } from '@/lib/format-date'
 import { Badge } from '@/components/ui/badge'
 import {
   Table,
@@ -132,13 +131,13 @@ export async function RequestHistory({ userId }: { userId: string }) {
                     <TableCell className="py-3">
                       <div className="flex flex-col">
                         <span className="text-sm font-semibold text-slate-700">
-                          {format(req.startDate, "dd MMM", { locale: es })}
+                          {formatUTC(req.startDate, "dd MMM")}
                           {req.returnDate && req.type === 'VACATION' && (
-                            <span className="text-slate-500 font-normal"> - {format(req.returnDate, "dd MMM", { locale: es })}</span>
+                            <span className="text-slate-500 font-normal"> - {formatUTC(req.returnDate, "dd MMM")}</span>
                           )}
                         </span>
                         <span className="text-[10px] text-slate-400 mt-0.5">
-                          Solicitado: {format(req.createdAt, "dd/MM", { locale: es })}
+                          Solicitado: {formatMXDate(req.createdAt)}
                         </span>
                       </div>
                     </TableCell>
@@ -174,11 +173,11 @@ export async function RequestHistory({ userId }: { userId: string }) {
                             <div>
                                 <p className="text-sm font-semibold text-slate-800">{getTypeLabel(req.type)}</p>
                                 <p className="text-xs text-slate-600 mt-0.5">
-                                    {format(req.startDate, "dd MMM", { locale: es })}
-                                    {req.returnDate && req.type === 'VACATION' && ` - ${format(req.returnDate, "dd MMM", { locale: es })}`}
+                                    {formatUTC(req.startDate, "dd MMM")}
+                                    {req.returnDate && req.type === 'VACATION' && ` - ${formatUTC(req.returnDate, "dd MMM")}`}
                                 </p>
                                 <p className="text-[10px] text-slate-400 mt-0.5">
-                                    Reg: {format(req.createdAt, "dd/MM/yy", { locale: es })}
+                                    Reg: {formatMXDate(req.createdAt)}
                                 </p>
                             </div>
                         </div>

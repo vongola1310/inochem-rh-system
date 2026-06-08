@@ -1,8 +1,8 @@
 import { PrismaClient } from '@prisma/client'
 import { auth } from '@/auth'
 import { redirect, notFound } from 'next/navigation'
-import { format, differenceInMonths } from 'date-fns'
-import { es } from 'date-fns/locale'
+import { differenceInMonths } from 'date-fns'
+import { formatUTC, formatMXTime, formatMXDate } from '@/lib/format-date'
 import { 
   Card, CardContent, CardHeader, CardTitle, CardDescription
 } from "@/components/ui/card"
@@ -220,7 +220,7 @@ export default async function EmployeeDetailPage({ params }: { params: { id: str
                     <div>
                       <p className="text-xs font-semibold text-slate-500 uppercase">Antigüedad</p>
                       <p className="text-sm text-slate-900 font-medium">{seniority}</p>
-                      <p className="text-[10px] text-slate-500">Desde {format(employee.entryDate, "dd MMM yyyy", { locale: es })}</p>
+                      <p className="text-[10px] text-slate-500">Desde {formatUTC(employee.entryDate, "dd MMM yyyy")}</p>
                     </div>
                   </div>
 
@@ -371,10 +371,10 @@ export default async function EmployeeDetailPage({ params }: { params: { id: str
                         <TableRow key={req.id} className="hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-0">
                           <TableCell>
                             <div className="text-sm font-medium text-slate-900">
-                              {format(req.createdAt, "d MMM yyyy", { locale: es })}
+                              {formatMXDate(req.createdAt)}
                             </div>
                             <div className="text-xs text-slate-500">
-                              {format(req.createdAt, "HH:mm 'hrs'")}
+                              {formatMXTime(req.createdAt)}
                             </div>
                           </TableCell>
                           
@@ -387,11 +387,11 @@ export default async function EmployeeDetailPage({ params }: { params: { id: str
                           
                           <TableCell>
                             <div className="text-sm text-slate-700">
-                              {format(req.startDate, "d MMM yyyy", { locale: es })}
+                              {formatUTC(req.startDate, "d MMM yyyy")}
                             </div>
                             {req.returnDate && req.type === 'VACATION' && (
                               <div className="text-xs text-slate-500">
-                                hasta {format(req.returnDate, "d MMM yyyy", { locale: es })}
+                                hasta {formatUTC(req.returnDate, "d MMM yyyy")}
                               </div>
                             )}
                           </TableCell>

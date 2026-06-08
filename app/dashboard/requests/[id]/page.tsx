@@ -1,7 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { notFound } from "next/navigation";
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
+import { formatUTC, formatMXTime } from "@/lib/format-date";
 import {
   Card,
   CardContent,
@@ -251,9 +250,7 @@ export default async function RequestDetailPage({
                   </Badge>
                   <span className="text-xs text-slate-400 font-medium flex items-center gap-1">
                     <Clock className="h-3 w-3" />
-                    {format(request.createdAt, "d MMM yyyy, HH:mm", {
-                      locale: es,
-                    })}
+                    {formatMXTime(request.createdAt)}
                   </span>
                 </div>
                 <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-1 flex items-center gap-2">
@@ -329,10 +326,10 @@ export default async function RequestDetailPage({
                       Inicia
                     </p>
                     <p className="text-xl font-bold text-slate-900 capitalize">
-                      {format(request.startDate, "d 'de' MMMM", { locale: es })}
+                      {formatUTC(request.startDate, "d 'de' MMMM")}
                     </p>
                     <p className="text-sm text-slate-400">
-                      {format(request.startDate, "EEEE, yyyy", { locale: es })}
+                      {formatUTC(request.startDate, "EEEE, yyyy")}
                     </p>
                   </div>
 
@@ -343,16 +340,12 @@ export default async function RequestDetailPage({
                     </p>
                     <p className="text-xl font-bold text-slate-900 capitalize">
                       {request.returnDate
-                        ? format(request.returnDate, "d 'de' MMMM", {
-                            locale: es,
-                          })
+                        ? formatUTC(request.returnDate, "d 'de' MMMM")
                         : "N/A"}
                     </p>
                     <p className="text-sm text-slate-400">
                       {request.returnDate
-                        ? format(request.returnDate, "EEEE, yyyy", {
-                            locale: es,
-                          })
+                        ? formatUTC(request.returnDate, "EEEE, yyyy")
                         : ""}
                     </p>
                   </div>
@@ -415,12 +408,10 @@ export default async function RequestDetailPage({
                       Fecha del Permiso
                     </p>
                     <p className="text-xl font-bold text-slate-900 capitalize">
-                      {format(request.startDate, "EEEE, d 'de' MMMM", {
-                        locale: es,
-                      })}
+                      {formatUTC(request.startDate, "EEEE, d 'de' MMMM")}
                     </p>
                     <p className="text-sm text-slate-400">
-                      {format(request.startDate, "yyyy")}
+                      {formatUTC(request.startDate, "yyyy")}
                     </p>
                   </div>
                   {request.permitTime && (

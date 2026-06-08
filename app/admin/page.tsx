@@ -12,8 +12,7 @@ import { runAutoApprovalCheck } from '@/app/actions/auto-approve-managers'
 import { CheckCircle, Users, ClipboardList, FileText, Calendar, Home, ArrowLeft, Zap } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { EmployeesTable } from '@/components/admin/employees-table'
-import { format } from 'date-fns'
-import { es } from 'date-fns/locale'
+import { formatUTC, formatMXTime, formatMXDate } from '@/lib/format-date'
 
 const prisma = new PrismaClient()
 
@@ -251,7 +250,7 @@ export default async function AdminDashboard() {
                           <TableCell>
                             <div className="flex items-center gap-1 text-slate-700">
                               <Calendar className="h-3.5 w-3.5 text-slate-400" />
-                              {format(req.startDate, "d 'de' MMM", { locale: es })}
+                              {formatUTC(req.startDate, "d 'de' MMM")}
                             </div>
                           </TableCell>
                           <TableCell className="text-center">

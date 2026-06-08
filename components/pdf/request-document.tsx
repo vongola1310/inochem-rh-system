@@ -1,7 +1,7 @@
 /* eslint-disable jsx-a11y/alt-text */
 import React from 'react';
 import { Page, Text, View, Document, StyleSheet, Image } from '@react-pdf/renderer';
-import { format } from 'date-fns';
+import { formatUTC, formatMXTime, formatMXDate } from '@/lib/format-date';
 import { es } from 'date-fns/locale';
 
 // ESTILOS DE ALTA PRECISIÓN (HOJA CARTA COMPLETA)
@@ -180,13 +180,13 @@ export const RequestDocument = ({ data }: { data: RequestData }) => {
             <View style={{ width: 120 }}>
                 <View style={{ flexDirection: 'row', borderWidth: 1, borderColor: '#000', backgroundColor: '#fff' }}>
                     <View style={{ flex: 1, borderRightWidth: 1, padding: 4, alignItems: 'center' }}>
-                        <Text style={styles.inputText}>{format(new Date(data.createdAt), 'dd')}</Text>
+                        <Text style={styles.inputText}>{formatUTC(new Date(data.createdAt), 'dd')}</Text>
                     </View>
                     <View style={{ flex: 1, borderRightWidth: 1, padding: 4, alignItems: 'center' }}>
-                        <Text style={styles.inputText}>{format(new Date(data.createdAt), 'MM')}</Text>
+                        <Text style={styles.inputText}>{formatUTC(new Date(data.createdAt), 'MM')}</Text>
                     </View>
                     <View style={{ flex: 1.5, padding: 4, alignItems: 'center' }}>
-                        <Text style={styles.inputText}>{format(new Date(data.createdAt), 'yyyy')}</Text>
+                        <Text style={styles.inputText}>{formatUTC(new Date(data.createdAt), 'yyyy')}</Text>
                     </View>
                 </View>
                 <Text style={{ fontSize: 7, textAlign: 'center', marginTop: 3, fontWeight: 'bold' }}>FECHA DE ELABORACIÓN</Text>
@@ -208,9 +208,9 @@ export const RequestDocument = ({ data }: { data: RequestData }) => {
                     <View style={styles.dateBoxContainer}>
                         <View style={{ borderWidth: 1, borderColor: '#000', marginBottom: 4 }}>
                            <View style={{ flexDirection: 'row', backgroundColor: '#fff' }}>
-                              <View style={{ flex: 1, padding: 5, alignItems: 'center', borderRightWidth: 1 }}><Text style={styles.inputText}>{format(new Date(data.startDate), 'dd')}</Text></View>
-                              <View style={{ flex: 1, padding: 5, alignItems: 'center', borderRightWidth: 1 }}><Text style={styles.inputText}>{format(new Date(data.startDate), 'MM')}</Text></View>
-                              <View style={{ flex: 1.5, padding: 5, alignItems: 'center' }}><Text style={styles.inputText}>{format(new Date(data.startDate), 'yyyy')}</Text></View>
+                              <View style={{ flex: 1, padding: 5, alignItems: 'center', borderRightWidth: 1 }}><Text style={styles.inputText}>{formatUTC(new Date(data.startDate), 'dd')}</Text></View>
+                              <View style={{ flex: 1, padding: 5, alignItems: 'center', borderRightWidth: 1 }}><Text style={styles.inputText}>{formatUTC(new Date(data.startDate), 'MM')}</Text></View>
+                              <View style={{ flex: 1.5, padding: 5, alignItems: 'center' }}><Text style={styles.inputText}>{formatUTC(new Date(data.startDate), 'yyyy')}</Text></View>
                            </View>
                         </View>
                         <Text style={{ fontSize: 8, textAlign: 'center', fontWeight: 'bold', backgroundColor: '#eee', padding: 2 }}>INICIO DE VACACIONES</Text>
@@ -226,9 +226,9 @@ export const RequestDocument = ({ data }: { data: RequestData }) => {
                     <View style={styles.dateBoxContainer}>
                          <View style={{ borderWidth: 1, borderColor: '#000', marginBottom: 4 }}>
                            <View style={{ flexDirection: 'row', backgroundColor: '#fff' }}>
-                              <View style={{ flex: 1, padding: 5, alignItems: 'center', borderRightWidth: 1 }}><Text style={styles.inputText}>{data.returnDate ? format(new Date(data.returnDate), 'dd') : '-'}</Text></View>
-                              <View style={{ flex: 1, padding: 5, alignItems: 'center', borderRightWidth: 1 }}><Text style={styles.inputText}>{data.returnDate ? format(new Date(data.returnDate), 'MM') : '-'}</Text></View>
-                              <View style={{ flex: 1.5, padding: 5, alignItems: 'center' }}><Text style={styles.inputText}>{data.returnDate ? format(new Date(data.returnDate), 'yyyy') : '-'}</Text></View>
+                              <View style={{ flex: 1, padding: 5, alignItems: 'center', borderRightWidth: 1 }}><Text style={styles.inputText}>{data.returnDate ? formatUTC(new Date(data.returnDate), 'dd') : '-'}</Text></View>
+                              <View style={{ flex: 1, padding: 5, alignItems: 'center', borderRightWidth: 1 }}><Text style={styles.inputText}>{data.returnDate ? formatUTC(new Date(data.returnDate), 'MM') : '-'}</Text></View>
+                              <View style={{ flex: 1.5, padding: 5, alignItems: 'center' }}><Text style={styles.inputText}>{data.returnDate ? formatUTC(new Date(data.returnDate), 'yyyy') : '-'}</Text></View>
                            </View>
                         </View>
                         <Text style={{ fontSize: 8, textAlign: 'center', fontWeight: 'bold', backgroundColor: '#eee', padding: 2 }}>REANUDO LABORES</Text>
@@ -251,7 +251,7 @@ export const RequestDocument = ({ data }: { data: RequestData }) => {
                 <View style={{ flexDirection: 'row', marginTop: 10, justifyContent: 'space-between' }}>
                     <View style={{ width: '45%' }}>
                          <Text style={styles.label}>FECHA DE PERMISO:</Text>
-                         <View style={styles.inputBox}><Text style={styles.inputText}>{format(new Date(data.startDate), 'dd/MM/yyyy')}</Text></View>
+                         <View style={styles.inputBox}><Text style={styles.inputText}>{formatUTC(new Date(data.startDate), 'dd/MM/yyyy')}</Text></View>
                     </View>
                     <View style={{ width: '45%' }}>
                          <Text style={styles.label}>HORARIO (SI APLICA):</Text>
@@ -277,14 +277,14 @@ export const RequestDocument = ({ data }: { data: RequestData }) => {
                    SOLICITANTE: {data.user.name}
                 </Text>
                 <Text style={styles.finalApprovalSubtext}>
-                   AUTORIZÓ: {data.bossApprovalDate ? format(new Date(data.bossApprovalDate), 'dd/MM/yyyy') : 'SISTEMA'}
+                   AUTORIZÓ: {data.bossApprovalDate ? formatUTC(new Date(data.bossApprovalDate), 'dd/MM/yyyy') : 'SISTEMA'}
                 </Text>
             </View>
         </View>
 
         {/* PIE DE PÁGINA */}
         <View style={styles.footer}>
-             <Text>Revvity Proprietary Information | Folio: {data.id.slice(-8).toUpperCase()} | {format(new Date(), 'dd/MM/yyyy HH:mm')}</Text>
+             <Text>Revvity Proprietary Information | Folio: {data.id.slice(-8).toUpperCase()} | {formatMXTime(new Date())}</Text>
         </View>
 
       </Page>
