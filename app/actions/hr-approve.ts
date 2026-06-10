@@ -7,17 +7,29 @@ const prisma = new PrismaClient()
 
 export async function approveRequestByHR(requestId: string) {
   try {
-    // 1. Obtener la solicitud para saber cuántos días mover
+    // 1. Obtener la solicitud CON su estado actual
     const request = await prisma.request.findUnique({
       where: { id: requestId },
       select: { 
         daysRequested: true, 
         userId: true,
-        type: true 
+        type: true,
+        status: true  // CRÍTICO: verificar estado antes de actuar
       }
     })
 
     if (!request) return { success: false, message: "Solicitud no encontrada" }
+
+    // ============================================================
+    // GUARD: Solo procesar si está en PENDING_HR
+    // Evita doble clic, recargas de página, o llamadas duplicadas
+    // ============================================================
+    if (request.status !== 'PENDING_HR') {
+      return { 
+        success: false, 
+        message: `Esta solicitud ya fue procesada (estado actual: ${request.status}).` 
+      }
+    }
 
     // 2. Transacción: Actualizar Estado Y Mover Saldos
     await prisma.$transaction(async (tx) => {
@@ -32,15 +44,13 @@ export async function approveRequestByHR(requestId: string) {
         }
       })
 
-      // B) MOVIMIENTO DE SALDOS (CRÍTICO)
-      // Solo si es VACACIÓN (porque solo las vacaciones congelan saldo en 'pendingDays')
+      // B) MOVIMIENTO DE SALDOS
+      // Solo si es VACACIÓN (los permisos no manejan pendingDays)
       if (request.type === 'VACATION' && request.daysRequested > 0) {
         await tx.vacationBalance.update({
           where: { userId: request.userId },
           data: {
-            // Restamos de "Por Autorizar"
             pendingDays: { decrement: request.daysRequested },
-            // Sumamos a "Ya Disfrutados"
             usedDays: { increment: request.daysRequested }
           }
         })

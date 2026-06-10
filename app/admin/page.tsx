@@ -12,7 +12,7 @@ import { runAutoApprovalCheck } from '@/app/actions/auto-approve-managers'
 import { CheckCircle, Users, ClipboardList, FileText, Calendar, Home, ArrowLeft, Zap } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { EmployeesTable } from '@/components/admin/employees-table'
-import { formatUTC, formatMXTime, formatMXDate } from '@/lib/format-date'
+import { formatUTC, formatMXTime } from '@/lib/format-date'
 
 const prisma = new PrismaClient()
 
@@ -203,17 +203,18 @@ export default async function AdminDashboard() {
                   <TableRow className="bg-slate-50/50">
                     <TableHead className="font-semibold text-slate-700">Empleado</TableHead>
                     <TableHead className="font-semibold text-slate-700">Tipo</TableHead>
-                    <TableHead className="font-semibold text-slate-700">Fecha Inicio</TableHead>
+                    <TableHead className="font-semibold text-slate-700">Solicitado</TableHead>
+                    <TableHead className="font-semibold text-slate-700">Firma Jefe</TableHead>
+                    <TableHead className="font-semibold text-slate-700">Periodo</TableHead>
                     <TableHead className="font-semibold text-slate-700 text-center">Días</TableHead>
                     <TableHead className="font-semibold text-slate-700 text-center">Saldo Disp.</TableHead>
-                    <TableHead className="font-semibold text-slate-700">Estado</TableHead>
                     <TableHead className="text-right font-semibold text-slate-700">Acción</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {pendingRequests.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center h-32">
+                      <TableCell colSpan={8} className="text-center h-32">
                         <div className="flex flex-col items-center justify-center gap-2 text-slate-400">
                           <CheckCircle className="h-12 w-12" />
                           <p className="font-medium">No hay solicitudes pendientes</p>
@@ -248,9 +249,29 @@ export default async function AdminDashboard() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <div className="flex items-center gap-1 text-slate-700">
-                              <Calendar className="h-3.5 w-3.5 text-slate-400" />
-                              {formatUTC(req.startDate, "d 'de' MMM")}
+                            <div className="text-xs text-slate-600">
+                              <p className="font-medium">{formatUTC(req.createdAt, "d MMM yyyy")}</p>
+                              <p className="text-slate-400">{formatMXTime(req.createdAt, { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Mexico_City' })}</p>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-xs text-slate-600">
+                              {req.bossApprovalDate ? (
+                                <>
+                                  <p className="font-medium text-[#73C056]">{formatUTC(req.bossApprovalDate, "d MMM yyyy")}</p>
+                                  <p className="text-slate-400">{formatMXTime(req.bossApprovalDate, { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Mexico_City' })}</p>
+                                </>
+                              ) : (
+                                <span className="text-slate-400">—</span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-xs text-slate-700">
+                              <p className="font-medium">{formatUTC(req.startDate, "d MMM yyyy")}</p>
+                              {req.returnDate && req.type === 'VACATION' && (
+                                <p className="text-slate-400">hasta {formatUTC(req.returnDate, "d MMM yyyy")}</p>
+                              )}
                             </div>
                           </TableCell>
                           <TableCell className="text-center">
@@ -266,24 +287,26 @@ export default async function AdminDashboard() {
                              </span>
                           </TableCell>
 
-                          <TableCell>
-                            <Badge className="bg-orange-50 text-orange-700 border border-orange-200 hover:bg-orange-100">
-                              Pendiente RH
-                            </Badge>
-                          </TableCell>
                           <TableCell className="text-right">
-                            <form action={async () => {
-                              'use server'
-                              await approveRequestByHR(req.id)
-                            }}>
-                              <Button 
-                                size="sm" 
-                                className="bg-[#73C056] hover:bg-[#62a847] text-white transition-colors shadow-sm"
-                              >
-                                <CheckCircle className="h-3.5 w-3.5 mr-1.5" />
-                                Aprobar
-                              </Button>
-                            </form>
+                            <div className="flex items-center gap-2 justify-end">
+                              <Link href={`/dashboard/requests/${req.id}`}>
+                                <Button variant="outline" size="sm" className="text-slate-500 border-slate-200 hover:text-slate-700 h-8 text-xs">
+                                  Ver detalle
+                                </Button>
+                              </Link>
+                              <form action={async () => {
+                                'use server'
+                                await approveRequestByHR(req.id)
+                              }}>
+                                <Button 
+                                  size="sm" 
+                                  className="bg-[#73C056] hover:bg-[#62a847] text-white transition-colors shadow-sm h-8 text-xs"
+                                >
+                                  <CheckCircle className="h-3.5 w-3.5 mr-1.5" />
+                                  Aprobar
+                                </Button>
+                              </form>
+                            </div>
                           </TableCell>
                         </TableRow>
                       )
