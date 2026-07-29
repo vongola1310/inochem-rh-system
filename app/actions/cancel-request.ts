@@ -2,36 +2,9 @@
 
 import { PrismaClient } from '@prisma/client'
 import { revalidatePath } from 'next/cache'
-import { setYear, addYears, isBefore, startOfDay } from 'date-fns'
+import { classifyBalanceImpact } from '@/lib/vacation-cycle'
 
 const prisma = new PrismaClient()
-
-// Helper: ¿La solicitud pertenece al periodo futuro (post-aniversario)?
-// Si es así, nunca se tocó el saldo actual al crearla, así que no debemos tocarlo al cancelar.
-function isFuturePeriodRequest(startDate: Date, entryDate: Date): boolean {
-    const today = startOfDay(new Date())
-    const entry = new Date(entryDate)
-    
-    // Calcular el próximo aniversario
-    let anniversary = new Date(Date.UTC(
-        today.getFullYear(),
-        entry.getUTCMonth(),
-        entry.getUTCDate()
-    ))
-    
-    // Si el aniversario de este año ya pasó, el próximo es el del año siguiente
-    if (isBefore(anniversary, today)) {
-        anniversary = new Date(Date.UTC(
-            today.getFullYear() + 1,
-            entry.getUTCMonth(),
-            entry.getUTCDate()
-        ))
-    }
-
-    // Si la solicitud inicia en o después del aniversario, es del periodo futuro
-    const requestStart = startOfDay(new Date(startDate))
-    return requestStart >= anniversary
-}
 
 export async function cancelRequest(formData: FormData) {
   const requestId = formData.get('requestId') as string
@@ -44,19 +17,22 @@ export async function cancelRequest(formData: FormData) {
 
     if (!request) return { success: false, message: "Solicitud no encontrada" }
 
-    // ¿Es del periodo futuro? Si es así, NO tocamos el saldo actual
-    const isFuture = request.type === 'VACATION' && isFuturePeriodRequest(request.startDate, request.user.entryDate)
+    const hasDays = request.type === 'VACATION' && request.daysRequested > 0
+    const impact = request.type === 'VACATION'
+      ? classifyBalanceImpact(request.startDate, request.createdAt, request.user.entryDate)
+      : { subPendingOnApprove: false, addUsedOnApprove: false, refundPendingBeforeBoss: false, refundUsedAfterBoss: false }
 
-    // CASO 1: Aún no se aprueba (PENDING_BOSS o PENDING_HR)
-    if (request.status === 'PENDING_BOSS' || request.status === 'PENDING_HR') {
+    // ============================================================
+    // CASO 1a: PENDING_BOSS — el jefe aún NO firma.
+    // El pending se devuelve solo si sigue vivo (no lo borró un aniversario).
+    // ============================================================
+    if (request.status === 'PENDING_BOSS') {
       await prisma.$transaction([
         prisma.request.update({
           where: { id: requestId },
           data: { status: 'CANCELLED' }
         }),
-        // Solo devolvemos pendingDays si es vacación del periodo ACTUAL
-        // Las del periodo futuro se crearon con updateBalance = false, no hay nada que devolver
-        ...(request.type === 'VACATION' && request.daysRequested > 0 && !isFuture ? [
+        ...(hasDays && impact.refundPendingBeforeBoss ? [
           prisma.vacationBalance.update({
             where: { userId: request.userId },
             data: { pendingDays: { decrement: request.daysRequested } }
@@ -68,7 +44,31 @@ export async function cancelRequest(formData: FormData) {
       return { success: true, message: "Solicitud cancelada correctamente." }
     }
 
-    // CASO 2: Ya fue aprobada (Solicitar cancelación a RH)
+    // ============================================================
+    // CASO 1b: PENDING_HR — el jefe YA firmó (used ya se movió).
+    // Se devuelve usedDays solo si esta solicitud lo sumó en el ciclo actual.
+    // ============================================================
+    if (request.status === 'PENDING_HR') {
+      await prisma.$transaction([
+        prisma.request.update({
+          where: { id: requestId },
+          data: { status: 'CANCELLED' }
+        }),
+        ...(hasDays && impact.refundUsedAfterBoss ? [
+          prisma.vacationBalance.update({
+            where: { userId: request.userId },
+            data: { usedDays: { decrement: request.daysRequested } }
+          })
+        ] : [])
+      ])
+      
+      revalidatePath('/')
+      return { success: true, message: "Solicitud cancelada y días devueltos." }
+    }
+
+    // ============================================================
+    // CASO 2: Ya con visto bueno completo → pedir cancelación a RH
+    // ============================================================
     if (request.status === 'APPROVED') {
       await prisma.request.update({
         where: { id: requestId },
@@ -95,17 +95,20 @@ export async function approveCancellation(formData: FormData) {
     })
     if (!request) return
 
-    // ¿Es del periodo futuro?
-    const isFuture = request.type === 'VACATION' && isFuturePeriodRequest(request.startDate, request.user.entryDate)
+    // GUARD anti doble-clic: solo procesar si está en CANCELLATION_REQUESTED
+    if (request.status !== 'CANCELLATION_REQUESTED') return
+
+    const hasDays = request.type === 'VACATION' && request.daysRequested > 0
+    const impact = request.type === 'VACATION'
+      ? classifyBalanceImpact(request.startDate, request.createdAt, request.user.entryDate)
+      : { subPendingOnApprove: false, addUsedOnApprove: false, refundPendingBeforeBoss: false, refundUsedAfterBoss: false }
 
     await prisma.$transaction([
         prisma.request.update({
             where: { id: requestId },
             data: { status: 'CANCELLED' }
         }),
-        // Solo devolvemos usedDays si es vacación del periodo ACTUAL
-        // Las del periodo futuro nunca descontaron del saldo actual
-        ...(request.type === 'VACATION' && request.daysRequested > 0 && !isFuture ? [
+        ...(hasDays && impact.refundUsedAfterBoss ? [
             prisma.vacationBalance.update({
                 where: { userId: request.userId },
                 data: { usedDays: { decrement: request.daysRequested } }

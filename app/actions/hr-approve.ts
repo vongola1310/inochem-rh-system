@@ -5,50 +5,41 @@ import { revalidatePath } from 'next/cache'
 
 const prisma = new PrismaClient()
 
+// ============================================================
+// VISTO BUENO DE RH — CERO MOVIMIENTO DE SALDOS
+// El movimiento pendingDays -> usedDays ocurre cuando el JEFE
+// firma (manage-request.ts). Aquí solo se registra la validación.
+// No importa si RH aprueba semanas después o cruza aniversarios:
+// esta función es incapaz de corromper un saldo.
+// ============================================================
 export async function approveRequestByHR(requestId: string) {
   try {
-    // 1. Obtener la solicitud para saber cuántos días mover
     const request = await prisma.request.findUnique({
       where: { id: requestId },
-      select: { 
-        daysRequested: true, 
-        userId: true,
-        type: true 
-      }
+      select: { status: true }
     })
 
     if (!request) return { success: false, message: "Solicitud no encontrada" }
 
-    // 2. Transacción: Actualizar Estado Y Mover Saldos
-    await prisma.$transaction(async (tx) => {
-      
-      // A) Cambiar estado a APROBADO
-      await tx.request.update({
-        where: { id: requestId },
-        data: {
-          status: 'APPROVED',
-          approvedByHR: true,
-          hrApprovalDate: new Date(),
-        }
-      })
+    // GUARD anti doble-clic: solo procesar si está en PENDING_HR
+    if (request.status !== 'PENDING_HR') {
+      return { 
+        success: false, 
+        message: `Esta solicitud ya fue procesada (estado actual: ${request.status}).` 
+      }
+    }
 
-      // B) MOVIMIENTO DE SALDOS (CRÍTICO)
-      // Solo si es VACACIÓN (porque solo las vacaciones congelan saldo en 'pendingDays')
-      if (request.type === 'VACATION' && request.daysRequested > 0) {
-        await tx.vacationBalance.update({
-          where: { userId: request.userId },
-          data: {
-            // Restamos de "Por Autorizar"
-            pendingDays: { decrement: request.daysRequested },
-            // Sumamos a "Ya Disfrutados"
-            usedDays: { increment: request.daysRequested }
-          }
-        })
+    await prisma.request.update({
+      where: { id: requestId },
+      data: {
+        status: 'APPROVED',
+        approvedByHR: true,
+        hrApprovalDate: new Date(),
       }
     })
 
     revalidatePath('/')
-    return { success: true, message: "Vacaciones procesadas y saldo actualizado." }
+    return { success: true, message: "Visto bueno registrado." }
 
   } catch (error) {
     console.error(error)

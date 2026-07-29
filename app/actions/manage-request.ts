@@ -3,53 +3,80 @@
 import { PrismaClient } from '@prisma/client'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { classifyBalanceImpact } from '@/lib/vacation-cycle'
 
 const prisma = new PrismaClient()
 
 export async function processRequest(formData: FormData) {
   const requestId = formData.get('requestId') as string
-  const action = formData.get('action') as string // 'APPROVE' o 'REJECT'
-  const reason = formData.get('reason') as string // Solo si rechaza
+  const action = formData.get('action') as string
+  const reason = formData.get('reason') as string
 
   try {
-    // 1. Buscamos la solicitud para saber de qué TIPO es
     const request = await prisma.request.findUnique({ 
         where: { id: requestId },
-        select: { type: true, userId: true, daysRequested: true }
+        select: { 
+            type: true, 
+            userId: true, 
+            daysRequested: true, 
+            status: true,
+            startDate: true,
+            createdAt: true,
+            user: { select: { entryDate: true } }
+        }
     })
 
     if (!request) return;
 
-    if (action === 'APPROVE') {
-      // --- LÓGICA DIFERENCIADA POR TIPO ---
-      
-      // REGLA DE NEGOCIO ACTUALIZADA:
-      // Requieren aprobación de RH (Doble paso): VACACIONES y CUMPLEAÑOS.
-      // Aprobación directa (Solo Jefe): Llegar tarde, Salir temprano, Ausencia, Otros.
-      const requiresHRApproval = request.type === 'VACATION' || request.type === 'PERMIT_BIRTHDAY';
-      
-      // Si requiere RH, pasa a PENDING_HR. Si no, pasa directo a APPROVED.
-      const nextStatus = requiresHRApproval ? 'PENDING_HR' : 'APPROVED';
+    // GUARD anti doble-clic: solo procesar si está en PENDING_BOSS
+    if (request.status !== 'PENDING_BOSS') {
+      return;
+    }
 
-      // Si NO requiere RH (es permiso simple), autocompletamos la firma de RH para cerrar el ciclo.
+    // Clasificar el impacto en saldo (solo aplica a VACATION)
+    const impact = request.type === 'VACATION'
+      ? classifyBalanceImpact(request.startDate, request.createdAt, request.user.entryDate)
+      : { subPendingOnApprove: false, addUsedOnApprove: false, refundPendingBeforeBoss: false, refundUsedAfterBoss: false }
+
+    const hasDays = request.type === 'VACATION' && request.daysRequested > 0
+
+    if (action === 'APPROVE') {
+      const requiresHRApproval = request.type === 'VACATION' || request.type === 'PERMIT_BIRTHDAY';
+      const nextStatus = requiresHRApproval ? 'PENDING_HR' : 'APPROVED';
       const autoApproveHR = !requiresHRApproval; 
 
-      await prisma.request.update({
-        where: { id: requestId },
-        data: {
-          status: nextStatus,
-          approvedByBoss: true,
-          bossApprovalDate: new Date(),
-          
-          // Lógica de autocompletado para RH
-          approvedByHR: autoApproveHR,
-          hrApprovalDate: autoApproveHR ? new Date() : null
+      // ============================================================
+      // LA FIRMA DEL JEFE MUEVE EL SALDO (RH ya no toca saldos)
+      // El clasificador decide exactamente qué mover:
+      //  - Solicitud normal del ciclo: pending -= días, used += días
+      //  - Ex-futura (aniversario ocurrió tras crearla): solo used += días
+      //  - Futura u obsoleta: no toca nada
+      // ============================================================
+      await prisma.$transaction(async (tx) => {
+        await tx.request.update({
+          where: { id: requestId },
+          data: {
+            status: nextStatus,
+            approvedByBoss: true,
+            bossApprovalDate: new Date(),
+            approvedByHR: autoApproveHR,
+            hrApprovalDate: autoApproveHR ? new Date() : null
+          }
+        })
+
+        if (hasDays && (impact.subPendingOnApprove || impact.addUsedOnApprove)) {
+          await tx.vacationBalance.update({
+            where: { userId: request.userId },
+            data: {
+              ...(impact.subPendingOnApprove ? { pendingDays: { decrement: request.daysRequested } } : {}),
+              ...(impact.addUsedOnApprove ? { usedDays: { increment: request.daysRequested } } : {}),
+            }
+          })
         }
       })
 
     } else {
-      // --- RECHAZO (IGUAL PARA TODOS) ---
-      // Se cancela y se regresan los días al saldo si aplica
+      // --- RECHAZO (antes de la firma: el pending se devuelve solo si sigue vivo) ---
       await prisma.$transaction([
         prisma.request.update({
           where: { id: requestId },
@@ -58,11 +85,12 @@ export async function processRequest(formData: FormData) {
             rejectionReason: reason,
           }
         }),
-        // Devolver los días solo si se habían descontado (generalmente Vacaciones)
-        prisma.vacationBalance.update({
-          where: { userId: request.userId },
-          data: { pendingDays: { decrement: request.daysRequested || 0 } }
-        })
+        ...(hasDays && impact.refundPendingBeforeBoss ? [
+          prisma.vacationBalance.update({
+            where: { userId: request.userId },
+            data: { pendingDays: { decrement: request.daysRequested } }
+          })
+        ] : [])
       ])
     }
     
