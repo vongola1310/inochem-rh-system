@@ -47,10 +47,6 @@ export async function processRequest(formData: FormData) {
 
       // ============================================================
       // LA FIRMA DEL JEFE MUEVE EL SALDO (RH ya no toca saldos)
-      // El clasificador decide exactamente qué mover:
-      //  - Solicitud normal del ciclo: pending -= días, used += días
-      //  - Ex-futura (aniversario ocurrió tras crearla): solo used += días
-      //  - Futura u obsoleta: no toca nada
       // ============================================================
       await prisma.$transaction(async (tx) => {
         await tx.request.update({
@@ -76,7 +72,7 @@ export async function processRequest(formData: FormData) {
       })
 
     } else {
-      // --- RECHAZO (antes de la firma: el pending se devuelve solo si sigue vivo) ---
+      // --- RECHAZO ---
       await prisma.$transaction([
         prisma.request.update({
           where: { id: requestId },
