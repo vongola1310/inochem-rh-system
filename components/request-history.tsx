@@ -12,6 +12,7 @@ import {
 import { Clock, CheckCircle, XCircle, FileText, Calendar, AlertCircle, ChevronRight, Ban, RefreshCw } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import Link from 'next/link'
+import { Button } from '@/components/ui/button'
 
 // Función auxiliar para traducir estados y colores (Diseño Mejorado)
 const getStatusBadge = (status: string) => {
@@ -72,24 +73,49 @@ const getTypeIcon = (type: string) => {
   return <div className="p-1.5 bg-slate-100 rounded-md text-slate-600"><FileText className="w-4 h-4"/></div>
 }
 
-export async function RequestHistory({ userId }: { userId: string }) {
-  // Buscamos las últimas 5 solicitudes
+export async function RequestHistory({
+  userId,
+  searchParams = {},
+}: {
+  userId: string
+  searchParams?: { [key: string]: string | string[] | undefined }
+}) {
+  const pageSize = 5
+  const totalRequests = await prisma.request.count({ where: { userId } })
+  const totalPages = Math.max(1, Math.ceil(totalRequests / pageSize))
+  const requestedPage = Number(searchParams.requestsPage)
+  const currentPage = Number.isSafeInteger(requestedPage) && requestedPage > 0
+    ? Math.min(requestedPage, totalPages)
+    : 1
+  const offset = (currentPage - 1) * pageSize
+
   const requests = await prisma.request.findMany({
     where: { userId },
-    orderBy: { createdAt: 'desc' },
-    take: 5
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    skip: offset,
+    take: pageSize
   })
+
+  const pageHref = (page: number) => {
+    const params = new URLSearchParams()
+    Object.entries(searchParams).forEach(([key, value]) => {
+      if (Array.isArray(value)) value.forEach(item => params.append(key, item))
+      else if (value !== undefined) params.set(key, value)
+    })
+    params.set('requestsPage', String(page))
+    return `/?${params.toString()}`
+  }
 
   return (
     <Card className="mt-0 border-slate-200 shadow-sm overflow-hidden flex flex-col h-full">
       <CardHeader className="bg-white border-b border-slate-100 py-4 px-5">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base font-bold text-slate-800 flex items-center gap-2">
-            Historial Reciente
+            Mis solicitudes
           </CardTitle>
           {requests.length > 0 && (
             <span className="text-[10px] uppercase tracking-wider font-semibold text-slate-400 bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
-              Últimos {requests.length}
+              {offset + 1}–{offset + requests.length} de {totalRequests}
             </span>
           )}
         </div>
@@ -191,6 +217,27 @@ export async function RequestHistory({ userId }: { userId: string }) {
           )}
         </div>
       </CardContent>
+      {totalPages > 1 && (
+        <nav aria-label="Paginación de mis solicitudes" className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 bg-white px-4 py-3">
+          {currentPage > 1 ? (
+            <Button asChild variant="outline" size="sm">
+              <Link href={pageHref(currentPage - 1)} scroll={false}>Anterior</Link>
+            </Button>
+          ) : (
+            <Button variant="outline" size="sm" disabled>Anterior</Button>
+          )}
+          <span className="text-xs text-slate-500" aria-live="polite">
+            Página {currentPage} de {totalPages}
+          </span>
+          {currentPage < totalPages ? (
+            <Button asChild variant="outline" size="sm">
+              <Link href={pageHref(currentPage + 1)} scroll={false}>Siguiente</Link>
+            </Button>
+          ) : (
+            <Button variant="outline" size="sm" disabled>Siguiente</Button>
+          )}
+        </nav>
+      )}
     </Card>
   )
 }

@@ -22,7 +22,11 @@ import { WhoIsOutCard } from '@/components/dashboard/who-is-out'
 
 const prisma = new PrismaClient()
 
-export default async function Home() {
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: { [key: string]: string | string[] | undefined }
+}) {
   const session = await auth()
 
   if (!session?.user?.email) {
@@ -493,7 +497,7 @@ export default async function Home() {
 
           <div className="lg:col-span-5 xl:col-span-4">
             <div className="lg:sticky lg:top-24">
-              <RequestHistory userId={user.id} />
+              <RequestHistory userId={user.id} searchParams={searchParams} />
             </div>
           </div>
         </div>
