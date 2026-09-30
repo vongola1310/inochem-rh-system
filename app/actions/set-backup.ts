@@ -47,5 +47,6 @@ export async function setBackupBoss(formData: FormData) {
     return { success: true, message: "Jefe de respaldo asignado correctamente." }
   } catch (error) {
     return { success: false, message: "Error al guardar la configuración." }
+    
   }
 }
