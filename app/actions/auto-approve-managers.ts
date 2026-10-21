@@ -3,6 +3,7 @@
 import { PrismaClient } from '@prisma/client'
 import { revalidatePath } from 'next/cache'
 import { isWeekend, addDays, startOfDay, isBefore } from 'date-fns'
+import { transitionRequest } from '@/lib/request-transition'
 
 const prisma = new PrismaClient()
 
@@ -59,24 +60,21 @@ export async function runAutoApprovalCheck() {
             console.log(`[AUTO-APPROVE] Solicitud #${req.id.slice(-4)} de ${req.user.name} (Gerente). Creada: ${req.createdAt.toISOString().split('T')[0]}. Deadline: ${deadline.toISOString().split('T')[0]}`)
             
             // APROBAR AUTOMÁTICAMENTE (Pasar a RH)
-            await prisma.request.update({
-                where: { id: req.id },
-                data: {
-                    status: 'PENDING_HR',
-                    approvedByBoss: true, // Se marca como aprobado por el "Jefe" (Sistema)
-                    bossApprovalDate: new Date(),
-                    observations: (req.observations || "") + " \n[SISTEMA]: Aprobación automática por transcurso de 3 días hábiles sin respuesta de Dirección."
-                }
-            })
+            const changed = await transitionRequest(req.id, ['PENDING_BOSS'], 'PENDING_HR', {
+                approvedByBoss: true,
+                bossApprovalDate: new Date(),
+            }, " \n[SISTEMA]: Aprobación automática por transcurso de 3 días hábiles sin respuesta de Dirección.")
 
             // Notificar a RH (opcional, crear notificación)
             /* await prisma.notification.create({ ... }) */
             
-            approvedCount++;
+            if (changed) approvedCount++;
         }
     }
 
     revalidatePath('/admin')
+    revalidatePath('/')
+    revalidatePath('/team/history')
     return { success: true, message: `Proceso finalizado. ${approvedCount} solicitudes de Gerentes aprobadas automáticamente.` }
 
   } catch (error) {

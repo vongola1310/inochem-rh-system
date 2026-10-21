@@ -1,10 +1,13 @@
 'use server'
 
-import { PrismaClient, RequestType } from '@prisma/client'
+import { PrismaClient, Prisma, RequestType } from '@prisma/client'
 import { revalidatePath } from 'next/cache'
-import { isWeekend, setYear, isBefore, addDays, startOfDay, differenceInCalendarDays } from 'date-fns'
-import { calculateVacationDays } from '@/lib/vacation-logic'
-import { z } from 'zod'
+import { isWeekend, isBefore, startOfDay, differenceInCalendarDays } from 'date-fns'
+import { getDaysByYears } from '@/lib/lft-law'
+import { checkAndRenewBalance } from '@/lib/check-renewal'
+import { getCycleBounds } from '@/lib/vacation-cycle'
+import { calculateVacationUsage } from '@/lib/vacation-usage'
+import { withBalanceTransaction, renewBalanceInTransaction } from '@/lib/vacation-balance'
 
 const prisma = new PrismaClient()
 
@@ -52,6 +55,7 @@ export async function createRequest(prevState: any, formData: FormData) {
     const permitTime = formData.get('permitTime') as string || null
     const observations = formData.get('observations') as string
 
+    await checkAndRenewBalance(userId)
     const user = await prisma.user.findUnique({
       where: { id: userId },
       include: { 
@@ -67,8 +71,7 @@ export async function createRequest(prevState: any, formData: FormData) {
     // --- CÁLCULOS DE FECHAS CLAVE ---
     const today = startOfDay(new Date());
     const entryDate = new Date(user.entryDate);
-    const anniversaryThisYear = setYear(entryDate, today.getFullYear());
-    anniversaryThisYear.setHours(0,0,0,0);
+    const { cycleEnd: anniversaryThisYear } = getCycleBounds(entryDate);
 
     // DETECCIÓN DE "ZONA DE PELIGRO" (Faltan 15 días o menos para el aniversario)
     const daysToAnniversary = differenceInCalendarDays(anniversaryThisYear, today);
@@ -106,17 +109,17 @@ export async function createRequest(prevState: any, formData: FormData) {
             
             if (isFullyInFuturePeriod) {
                 // Calcular cuántos días tendrá después de su aniversario
-                const projectedTotalDays = calculateVacationDays(user.entryDate);
+                const projectedTotalDays = getDaysByYears(anniversaryThisYear.getUTCFullYear() - user.entryDate.getUTCFullYear());
                 
                 if (daysRequested > projectedTotalDays) {
                     return { success: false, message: `Saldo insuficiente para el próximo periodo. Tendrás ${projectedTotalDays} días después de tu aniversario y pides ${daysRequested}.` }
                 }
 
                 // Flujo normal con jefe, NO auto-aprobación (hay tiempo)
-                // updateBalance = false porque no afecta el saldo del periodo actual
+                // El cargo lo determina el ciclo de inicio, no el momento de la firma.
                 await createSingleRequest(user, type, startDate, returnDate, daysRequested, 
                     `${observations}\n[SISTEMA]: Solicitud anticipada para el periodo futuro (post-aniversario).`, 
-                    permitTime, false, false);
+                    permitTime, false);
                 
                 revalidatePath('/');
                 return { 
@@ -134,7 +137,7 @@ export async function createRequest(prevState: any, formData: FormData) {
         }
 
         // Si estamos en la zona de peligro, Auto-Aprobamos. Si no, flujo normal.
-        await createSingleRequest(user, type, startDate, returnDate, daysRequested, observations, permitTime, true, isDangerZone);
+        await createSingleRequest(user, type, startDate, returnDate, daysRequested, observations, permitTime, isDangerZone);
         
         revalidatePath('/')
         return { 
@@ -155,12 +158,12 @@ export async function createRequest(prevState: any, formData: FormData) {
             return { success: false, message: `Saldo insuficiente para el periodo actual. Tienes ${currentBalance} días antes del aniversario.` }
         }
 
-        await prisma.$transaction(async (tx) => {
+        await withBalanceTransaction(async (tx) => {
             // Parte 1 (Viejo saldo): Como cruza el aniversario, ESTÁ EN ZONA DE PELIGRO por definición. Se Auto-Aprueba.
-            await createSingleRequestTx(tx, user, type, startDate, splitDate, daysPart1, `${observations} (Parte 1: Cierre de ciclo)`, permitTime, true, true);
+            await createSingleRequestTx(tx, user, type, startDate, splitDate, daysPart1, `${observations} (Parte 1: Cierre de ciclo)`, permitTime, true);
 
             // Parte 2 (Nuevo saldo): Pertenece al nuevo año. Hay tiempo, sigue el flujo normal con el Jefe.
-            await createSingleRequestTx(tx, user, type, splitDate, returnDate, daysPart2, `${observations} (Parte 2: Nuevo ciclo)`, permitTime, false, false);
+            await createSingleRequestTx(tx, user, type, splitDate, returnDate, daysPart2, `${observations} (Parte 2: Nuevo ciclo)`, permitTime, false);
         });
 
         revalidatePath('/')
@@ -174,7 +177,8 @@ export async function createRequest(prevState: any, formData: FormData) {
 }
 
 // Helper para crear solicitud dentro de transacción
-async function createSingleRequestTx(tx: any, user: any, type: RequestType, start: Date, end: Date, days: number, obs: string, time: string | null, updateBalance: boolean, autoApprove: boolean = false) {
+async function createSingleRequestTx(tx: Prisma.TransactionClient, user: any, type: RequestType, start: Date, end: Date, days: number, obs: string, time: string | null, autoApprove: boolean = false) {
+    if (type === 'VACATION') await renewBalanceInTransaction(tx, user.id, user.entryDate);
     
     let notifyUserId = user.bossId;
     const now = new Date();
@@ -205,20 +209,19 @@ async function createSingleRequestTx(tx: any, user: any, type: RequestType, star
         }
     })
 
-    // Actualización de Saldo Dinámica
-    if (type === 'VACATION' && days > 0 && updateBalance) {
-        if (autoApprove) {
-            // Si se auto-aprueba, se cuenta como "Usado" de inmediato
+    // El ciclo de inicio decide el cargo, también al solicitar el próximo año calendario.
+    if (type === 'VACATION' && days > 0) {
+        const { cycleStart, cycleEnd } = getCycleBounds(user.entryDate);
+        const impact = calculateVacationUsage([{ startDate: start, daysRequested: days, status: finalStatus }], cycleStart, cycleEnd);
+        if (impact.usedDays || impact.pendingDays) {
             await tx.vacationBalance.update({
                 where: { userId: user.id },
-                data: { usedDays: { increment: days } }
-            })
-        } else {
-            // Si no, se cuenta como "Pendiente"
-            await tx.vacationBalance.update({
-                where: { userId: user.id },
-                data: { pendingDays: { increment: days } }
-            })
+                data: {
+                    usedDays: { increment: impact.usedDays },
+                    pendingDays: { increment: impact.pendingDays },
+                    lastUpdated: new Date(),
+                }
+            });
         }
     }
 
@@ -258,8 +261,8 @@ async function createSingleRequestTx(tx: any, user: any, type: RequestType, star
 }
 
 // Wrapper para llamada simple (sin Tx externa)
-async function createSingleRequest(user: any, type: RequestType, start: Date, end: Date, days: number, obs: string, time: string | null, updateBalance: boolean, autoApprove: boolean = false) {
-    return await prisma.$transaction(async (tx) => {
-        await createSingleRequestTx(tx, user, type, start, end, days, obs, time, updateBalance, autoApprove)
+async function createSingleRequest(user: any, type: RequestType, start: Date, end: Date, days: number, obs: string, time: string | null, autoApprove: boolean = false) {
+    return await withBalanceTransaction(async (tx) => {
+        await createSingleRequestTx(tx, user, type, start, end, days, obs, time, autoApprove)
     })
 }

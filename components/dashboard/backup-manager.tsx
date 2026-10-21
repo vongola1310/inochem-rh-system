@@ -5,10 +5,9 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { setBackupBoss } from '@/app/actions/set-backup'
 import { toast } from "sonner"
-import { UserCog, CalendarClock, ShieldCheck } from 'lucide-react'
+import { UserCog, ChevronDown, ShieldCheck } from 'lucide-react'
 import { format } from 'date-fns'
 
 type SimpleUser = { id: string; name: string; jobTitle: string | null }
@@ -45,26 +44,22 @@ export function BackupManager({
   const isActive = currentBackupId && new Date() <= (currentEnd || new Date())
 
   return (
-    <Card className={`border-l-4 ${isActive ? 'border-orange-500 bg-orange-50/30' : 'border-slate-300'}`}>
-      <CardHeader className="pb-3">
-        <div className="flex items-center gap-2">
-            <UserCog className={`h-5 w-5 ${isActive ? 'text-orange-600' : 'text-slate-500'}`} />
-            <CardTitle className="text-base font-bold text-slate-800">Delegar Aprobaciones (Jefe Interino)</CardTitle>
-        </div>
-        <CardDescription className="text-xs">
-            Si saldrás de vacaciones, elige quién aprobará las solicitudes de tu equipo en tu ausencia.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
+    <details className="group min-w-0 rounded-xl border border-slate-200 bg-white shadow-sm">
+      <summary className="flex cursor-pointer list-none items-center gap-2.5 rounded-xl p-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3e712c] [&::-webkit-details-marker]:hidden">
+        <UserCog className="h-4 w-4 shrink-0 text-[#527346]" />
+        <span className="min-w-0 flex-1"><span className="block text-sm font-semibold text-slate-800">Delegar aprobaciones</span><span className={`mt-1 block text-xs ${isActive ? 'text-amber-700' : 'text-slate-500'}`}>{isActive ? 'Respaldo configurado' : 'Configura un jefe interino'}</span></span>
+        <ChevronDown className="h-4 w-4 shrink-0 text-slate-500 transition-transform group-open:rotate-180" />
+      </summary>
+      <div className="border-t border-slate-100 p-5">
+        <p className="mb-4 text-xs leading-relaxed text-slate-500">Elige quién aprobará las solicitudes de tu equipo durante tu ausencia.</p>
         <form action={handleSubmit} className="space-y-4">
             
             <div className="space-y-1">
-                <Label className="text-xs font-semibold text-slate-600">Jefe de Respaldo</Label>
+                <Label htmlFor="backup-boss" className="text-xs font-semibold text-slate-600">Jefe de respaldo</Label>
                 <Select name="backupId" defaultValue={currentBackupId || "none"}>
-                    <SelectTrigger className="h-9 text-sm bg-white">
+                    <SelectTrigger id="backup-boss" className="h-10 w-full min-w-0 text-sm bg-white [&>span]:truncate">
                         <SelectValue placeholder="Selecciona un encargado..." />
                     </SelectTrigger>
-                    {/* AQUÍ ESTÁ LA MAGIA: max-h-[250px] y overflow-y-auto */}
                     <SelectContent className="max-h-[250px] overflow-y-auto">
                         <SelectItem value="none" className="text-slate-500 italic">-- Nadie (Yo apruebo) --</SelectItem>
                         {employees.map(emp => (
@@ -76,24 +71,18 @@ export function BackupManager({
                 </Select>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid gap-3">
                 <div className="space-y-1">
-                    <Label className="text-xs font-semibold text-slate-600">Desde</Label>
-                    <div className="relative">
-                        <CalendarClock className="absolute left-2 top-2 h-3.5 w-3.5 text-slate-400"/>
-                        <Input type="date" name="startDate" defaultValue={defaultStart} className="h-9 pl-7 text-xs bg-white" required={!currentBackupId} />
-                    </div>
+                    <Label htmlFor="backup-start" className="text-xs font-semibold text-slate-600">Desde</Label>
+                    <Input id="backup-start" type="date" name="startDate" defaultValue={defaultStart} className="h-10 min-w-0 text-sm bg-white" required={!currentBackupId} />
                 </div>
                 <div className="space-y-1">
-                    <Label className="text-xs font-semibold text-slate-600">Hasta</Label>
-                    <div className="relative">
-                        <CalendarClock className="absolute left-2 top-2 h-3.5 w-3.5 text-slate-400"/>
-                        <Input type="date" name="endDate" defaultValue={defaultEnd} className="h-9 pl-7 text-xs bg-white" required={!currentBackupId}/>
-                    </div>
+                    <Label htmlFor="backup-end" className="text-xs font-semibold text-slate-600">Hasta</Label>
+                    <Input id="backup-end" type="date" name="endDate" defaultValue={defaultEnd} className="h-10 min-w-0 text-sm bg-white" required={!currentBackupId}/>
                 </div>
             </div>
 
-            <Button type="submit" size="sm" className={`w-full ${isActive ? 'bg-orange-600 hover:bg-orange-700' : 'bg-slate-900'}`} disabled={loading}>
+            <Button type="submit" size="sm" className="h-10 w-full bg-[#3e712c] hover:bg-[#315a23]" disabled={loading}>
                 {loading ? 'Guardando...' : isActive ? 'Actualizar Delegación' : 'Activar Respaldo'}
             </Button>
 
@@ -104,7 +93,7 @@ export function BackupManager({
                 </div>
             )}
         </form>
-      </CardContent>
-    </Card>
+      </div>
+    </details>
   )
 }

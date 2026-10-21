@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { processRequest } from "@/app/actions/manage-request";
+import { approveRequestByHR } from "@/app/actions/hr-approve";
 import {
   cancelRequest,
   approveCancellation,
@@ -500,7 +501,11 @@ export default async function RequestDetailPage({
 
             {showApprovalButtons && (
               <div className="flex flex-col gap-3 w-full animate-in slide-in-from-bottom-2">
-                <form action={processRequest} className="w-full">
+                <form action={currentStatus === "PENDING_HR" ? async (formData) => {
+                  "use server";
+                  const result = await approveRequestByHR(formData.get('requestId') as string);
+                  if (!result.success) throw new Error(result.message);
+                } : processRequest} className="w-full">
                   <input type="hidden" name="requestId" value={request.id} />
                   <input type="hidden" name="action" value="APPROVE" />
                   <Button
@@ -508,7 +513,7 @@ export default async function RequestDetailPage({
                     type="submit"
                   >
                     <CheckCircle className="w-5 h-5 mr-2" />
-                    Autorizar y Firmar
+                    {currentStatus === "PENDING_HR" ? 'Registrar visto bueno de RH' : 'Autorizar y firmar'}
                   </Button>
                 </form>
                 <RejectForm requestId={request.id} />

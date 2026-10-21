@@ -22,11 +22,13 @@ type Holiday = {
 export function PermitRequestForm({ 
     userId, 
     userBirthDate,
-    holidays = []
+    holidays = [],
+    onSuccess,
 }: { 
     userId: string, 
     userBirthDate?: Date | null,
     holidays?: Holiday[]
+    onSuccess?: () => void
 }) {
   const [date, setDate] = useState<Date>()
   const [type, setType] = useState<string>("PERMIT_LATE")
@@ -114,6 +116,7 @@ export function PermitRequestForm({
       setObservation("")
       setDateMessage(null)
       setIsBlocked(false)
+      onSuccess?.()
     } else {
       toast.error("Error", { description: result.message })
     }
@@ -156,7 +159,7 @@ export function PermitRequestForm({
             <Button 
               variant="outline" 
               disabled={isBirthdayMode}
-              className={`w-full justify-start text-left font-normal border-slate-300 ${!date && "text-muted-foreground"} ${isBirthdayMode ? "bg-slate-100 opacity-100 cursor-not-allowed" : "hover:border-[#73C056]"}`}
+              className={`h-auto min-h-11 w-full justify-start whitespace-normal text-left font-normal border-slate-300 ${!date && "text-muted-foreground"} ${isBirthdayMode ? "bg-slate-100 opacity-100 cursor-not-allowed" : "hover:border-[#527346]"}`}
             >
               {isBirthdayMode ? <Lock className="mr-2 h-4 w-4 text-slate-400" /> : <CalendarIcon className="mr-2 h-4 w-4 text-[#73C056]" />}
               {date ? format(date, "PPP", { locale: es }) : <span>Selecciona la fecha</span>}
@@ -220,7 +223,7 @@ export function PermitRequestForm({
       {/* BOTÓN DESHABILITADO SI ESTÁ BLOQUEADO */}
       <Button 
         type="submit" 
-        className="w-full bg-[#73C056] hover:bg-[#62a847] text-white font-semibold py-6 shadow-md disabled:opacity-50 disabled:cursor-not-allowed" 
+        className="h-11 w-full bg-[#3e712c] hover:bg-[#315a23] text-white font-semibold shadow-none disabled:opacity-50 disabled:cursor-not-allowed"
         // Agregamos la condición isBlocked
         disabled={loading || !date || isBlocked}
       >

@@ -1,49 +1,22 @@
-
 'use server'
 
-import { PrismaClient } from '@prisma/client'
 import { revalidatePath } from 'next/cache'
+import { transitionRequest } from '@/lib/request-transition'
 
-const prisma = new PrismaClient()
-
-// ============================================================
-// VISTO BUENO DE RH — CERO MOVIMIENTO DE SALDOS
-// El movimiento pendingDays -> usedDays ocurre cuando el JEFE
-// firma (manage-request.ts). Aquí solo se registra la validación.
-// No importa si RH aprueba semanas después o cruza aniversarios:
-// esta función es incapaz de corromper un saldo.
-// ============================================================
 export async function approveRequestByHR(requestId: string) {
   try {
-    const request = await prisma.request.findUnique({
-      where: { id: requestId },
-      select: { status: true }
+    // PENDING_HR y APPROVED ya cuentan como aprobados por jefe: delta de saldo = 0.
+    const changed = await transitionRequest(requestId, ['PENDING_HR'], 'APPROVED', {
+      approvedByHR: true, hrApprovalDate: new Date(),
     })
-
-    if (!request) return { success: false, message: "Solicitud no encontrada" }
-
-    // GUARD anti doble-clic: solo procesar si está en PENDING_HR
-    if (request.status !== 'PENDING_HR') {
-      return { 
-        success: false, 
-        message: `Esta solicitud ya fue procesada (estado actual: ${request.status}).` 
-      }
-    }
-
-    await prisma.request.update({
-      where: { id: requestId },
-      data: {
-        status: 'APPROVED',
-        approvedByHR: true,
-        hrApprovalDate: new Date(),
-      }
-    })
-
+    if (!changed) return { success: false, message: 'La solicitud no existe o ya fue procesada.' }
     revalidatePath('/')
-    return { success: true, message: "Visto bueno registrado." }
-
+    revalidatePath('/admin')
+    revalidatePath('/team/history')
+    revalidatePath(`/dashboard/requests/${requestId}`)
+    return { success: true, message: 'Visto bueno registrado.' }
   } catch (error) {
-    console.error(error)
-    return { success: false, message: "Error al procesar" }
+    console.error('Error al registrar el visto bueno de RH:', error)
+    return { success: false, message: 'Error al procesar' }
   }
 }

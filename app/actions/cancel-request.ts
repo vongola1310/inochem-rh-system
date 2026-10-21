@@ -1,120 +1,42 @@
 'use server'
 
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
-import { classifyBalanceImpact } from '@/lib/vacation-cycle'
+import { transitionRequest } from '@/lib/request-transition'
 
-const prisma = new PrismaClient()
+function refreshRequest(requestId: string) {
+  revalidatePath('/')
+  revalidatePath('/admin')
+  revalidatePath('/team/history')
+  revalidatePath(`/dashboard/requests/${requestId}`)
+}
 
 export async function cancelRequest(formData: FormData) {
   const requestId = formData.get('requestId') as string
-  
   try {
-    const request = await prisma.request.findUnique({
-      where: { id: requestId },
-      include: { user: true }
-    })
-
-    if (!request) return { success: false, message: "Solicitud no encontrada" }
-
-    const hasDays = request.type === 'VACATION' && request.daysRequested > 0
-    const impact = request.type === 'VACATION'
-      ? classifyBalanceImpact(request.startDate, request.createdAt, request.user.entryDate)
-      : { subPendingOnApprove: false, addUsedOnApprove: false, refundPendingBeforeBoss: false, refundUsedAfterBoss: false }
-
-    // ============================================================
-    // CASO 1a: PENDING_BOSS — el jefe aún NO firma.
-    // El pending se devuelve solo si sigue vivo (no lo borró un aniversario).
-    // ============================================================
-    if (request.status === 'PENDING_BOSS') {
-      await prisma.$transaction([
-        prisma.request.update({
-          where: { id: requestId },
-          data: { status: 'CANCELLED' }
-        }),
-        ...(hasDays && impact.refundPendingBeforeBoss ? [
-          prisma.vacationBalance.update({
-            where: { userId: request.userId },
-            data: { pendingDays: { decrement: request.daysRequested } }
-          })
-        ] : [])
-      ])
-      
-      revalidatePath('/')
-      return { success: true, message: "Solicitud cancelada correctamente." }
+    const request = await prisma.request.findUnique({ where: { id: requestId }, select: { status: true } })
+    if (!request) return { success: false, message: 'Solicitud no encontrada' }
+    if (request.status === 'PENDING_BOSS' || request.status === 'PENDING_HR') {
+      const changed = await transitionRequest(requestId, [request.status], 'CANCELLED')
+      if (!changed) return { success: false, message: 'La solicitud cambió de estado. Actualiza la página.' }
+      refreshRequest(requestId)
+      return { success: true, message: 'Solicitud cancelada y saldo actualizado.' }
     }
-
-    // ============================================================
-    // CASO 1b: PENDING_HR — el jefe YA firmó (used ya se movió).
-    // Se devuelve usedDays solo si esta solicitud lo sumó en el ciclo actual.
-    // ============================================================
-    if (request.status === 'PENDING_HR') {
-      await prisma.$transaction([
-        prisma.request.update({
-          where: { id: requestId },
-          data: { status: 'CANCELLED' }
-        }),
-        ...(hasDays && impact.refundUsedAfterBoss ? [
-          prisma.vacationBalance.update({
-            where: { userId: request.userId },
-            data: { usedDays: { decrement: request.daysRequested } }
-          })
-        ] : [])
-      ])
-      
-      revalidatePath('/')
-      return { success: true, message: "Solicitud cancelada y días devueltos." }
-    }
-
-    // ============================================================
-    // CASO 2: Ya con visto bueno completo → pedir cancelación a RH
-    // ============================================================
     if (request.status === 'APPROVED') {
-      await prisma.request.update({
-        where: { id: requestId },
-        data: { status: 'CANCELLATION_REQUESTED' }
-      })
-      
-      revalidatePath('/')
-      return { success: true, message: "Se envió la petición de cancelación." }
+      const changed = await transitionRequest(requestId, ['APPROVED'], 'CANCELLATION_REQUESTED')
+      if (!changed) return { success: false, message: 'La solicitud ya fue procesada.' }
+      refreshRequest(requestId)
+      return { success: true, message: 'Se envió la petición de cancelación.' }
     }
-
-    return { success: false, message: "No se puede cancelar esta solicitud." }
-
+    return { success: false, message: 'No se puede cancelar esta solicitud.' }
   } catch (error) {
-    return { success: false, message: "Error al procesar cancelación." }
+    console.error('Error al cancelar solicitud:', error)
+    return { success: false, message: 'Error al procesar cancelación.' }
   }
 }
 
 export async function approveCancellation(formData: FormData) {
-    const requestId = formData.get('requestId') as string
-    
-    const request = await prisma.request.findUnique({ 
-        where: { id: requestId },
-        include: { user: true }
-    })
-    if (!request) return
-
-    // GUARD anti doble-clic: solo procesar si está en CANCELLATION_REQUESTED
-    if (request.status !== 'CANCELLATION_REQUESTED') return
-
-    const hasDays = request.type === 'VACATION' && request.daysRequested > 0
-    const impact = request.type === 'VACATION'
-      ? classifyBalanceImpact(request.startDate, request.createdAt, request.user.entryDate)
-      : { subPendingOnApprove: false, addUsedOnApprove: false, refundPendingBeforeBoss: false, refundUsedAfterBoss: false }
-
-    await prisma.$transaction([
-        prisma.request.update({
-            where: { id: requestId },
-            data: { status: 'CANCELLED' }
-        }),
-        ...(hasDays && impact.refundUsedAfterBoss ? [
-            prisma.vacationBalance.update({
-                where: { userId: request.userId },
-                data: { usedDays: { decrement: request.daysRequested } }
-            })
-        ] : [])
-    ])
-    
-    revalidatePath('/')
+  const requestId = formData.get('requestId') as string
+  await transitionRequest(requestId, ['CANCELLATION_REQUESTED'], 'CANCELLED')
+  refreshRequest(requestId)
 }

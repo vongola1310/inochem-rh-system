@@ -1,16 +1,8 @@
 import { prisma } from '@/lib/prisma' // Usamos el Singleton para evitar errores de conexión
-import { formatUTC, formatMXTime, formatMXDate } from '@/lib/format-date'
+import { formatUTC, formatMXDate } from '@/lib/format-date'
 import { Badge } from '@/components/ui/badge'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import { Clock, CheckCircle, XCircle, FileText, Calendar, AlertCircle, ChevronRight, Ban, RefreshCw } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Clock, CheckCircle, XCircle, FileText, Calendar, ChevronRight, Ban, RefreshCw } from 'lucide-react'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 
@@ -20,7 +12,7 @@ const getStatusBadge = (status: string) => {
     case 'PENDING_BOSS':
       return (
         <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 font-medium px-2 py-0.5 whitespace-nowrap">
-          <Clock className="w-3 h-3 mr-1.5"/> Firma Jefe
+          <Clock className="w-3 h-3 mr-1.5"/> Revisión del jefe
         </Badge>
       )
     case 'PENDING_HR':
@@ -31,26 +23,26 @@ const getStatusBadge = (status: string) => {
       )
     case 'APPROVED':
       return (
-        <Badge className="bg-[#73C056]/10 text-[#73C056] border border-[#73C056]/20 font-medium shadow-none hover:bg-[#73C056]/20 px-2 py-0.5 whitespace-nowrap">
-          <CheckCircle className="w-3 h-3 mr-1.5"/> Aprobado
+        <Badge className="bg-[#edf4e9] text-[#3e712c] border border-[#dce8d7] font-medium shadow-none hover:bg-[#edf4e9] px-2 py-0.5 whitespace-nowrap">
+          <CheckCircle className="w-3 h-3 mr-1.5"/> Aprobada
         </Badge>
       )
     case 'REJECTED':
       return (
         <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 font-medium px-2 py-0.5 whitespace-nowrap">
-          <XCircle className="w-3 h-3 mr-1.5"/> Rechazado
+          <XCircle className="w-3 h-3 mr-1.5"/> Rechazada
         </Badge>
       )
     case 'CANCELLED':
       return (
         <Badge variant="outline" className="bg-slate-100 text-slate-500 border-slate-200 font-medium px-2 py-0.5 whitespace-nowrap">
-          <Ban className="w-3 h-3 mr-1.5"/> Cancelado
+          <Ban className="w-3 h-3 mr-1.5"/> Cancelada
         </Badge>
       )
     case 'CANCELLATION_REQUESTED':
         return (
           <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 font-medium px-2 py-0.5 whitespace-nowrap">
-            <RefreshCw className="w-3 h-3 mr-1.5"/> Pide Cancelar
+            <RefreshCw className="w-3 h-3 mr-1.5"/> Cancelación en revisión
           </Badge>
         )
     default:
@@ -68,7 +60,7 @@ const getTypeLabel = (type: string) => {
 }
 
 const getTypeIcon = (type: string) => {
-  if (type === 'VACATION') return <div className="p-1.5 bg-blue-100 rounded-md text-blue-600"><Calendar className="w-4 h-4"/></div>
+  if (type === 'VACATION') return <div className="p-2 bg-[#edf4e9] rounded-lg text-[#3e712c]"><Calendar className="w-4 h-4"/></div>
   if (type === 'PERMIT_BIRTHDAY') return <div className="p-1.5 bg-pink-100 rounded-md text-pink-600"><span className="text-sm">🎂</span></div>
   return <div className="p-1.5 bg-slate-100 rounded-md text-slate-600"><FileText className="w-4 h-4"/></div>
 }
@@ -103,140 +95,89 @@ export async function RequestHistory({
       else if (value !== undefined) params.set(key, value)
     })
     params.set('requestsPage', String(page))
-    return `/?${params.toString()}`
+    return `/?${params.toString()}#my-requests`
   }
 
   return (
-    <Card className="mt-0 border-slate-200 shadow-sm overflow-hidden flex flex-col h-full">
-      <CardHeader className="bg-white border-b border-slate-100 py-4 px-5">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-base font-bold text-slate-800 flex items-center gap-2">
-            Mis solicitudes
-          </CardTitle>
-          {requests.length > 0 && (
-            <span className="text-[10px] uppercase tracking-wider font-semibold text-slate-400 bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
-              {offset + 1}–{offset + requests.length} de {totalRequests}
-            </span>
-          )}
+    <Card className="mt-0 min-w-0 gap-0 rounded-xl border-slate-200 bg-white py-0 shadow-sm">
+      <CardHeader className="block border-b border-slate-100 px-5 py-5 sm:px-6">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h2 className="text-base font-semibold text-slate-900">
+              Gestionar mis solicitudes
+            </h2>
+            <p className="mt-1 text-xs text-slate-500">Tus vacaciones y permisos, del más reciente al más antiguo.</p>
+          </div>
+          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">{totalRequests}</span>
         </div>
       </CardHeader>
-      
-      <CardContent className="p-0 flex-1 bg-white">
-        {/* Vista Desktop - Tabla */}
-        <div className="hidden md:block overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-slate-50/50 hover:bg-slate-50/50 border-b border-slate-100">
-                <TableHead className="font-semibold text-xs uppercase tracking-wider text-slate-500 pl-5 h-10">Tipo</TableHead>
-                <TableHead className="font-semibold text-xs uppercase tracking-wider text-slate-500 h-10">Periodo / Fecha</TableHead>
-                <TableHead className="font-semibold text-xs uppercase tracking-wider text-slate-500 h-10">Estado</TableHead>
-                <TableHead className="text-right font-semibold text-xs uppercase tracking-wider text-slate-500 pr-5 h-10">Acción</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {requests.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={4} className="h-40">
-                    <div className="flex flex-col items-center justify-center text-center">
-                      <div className="h-12 w-12 rounded-full bg-slate-50 flex items-center justify-center mb-3">
-                        <FileText className="h-6 w-6 text-slate-300" />
-                      </div>
-                      <p className="text-slate-500 font-medium text-sm">Sin historial reciente</p>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                requests.map((req) => (
-                  <TableRow key={req.id} className="group hover:bg-slate-50 transition-colors cursor-pointer border-b border-slate-50 last:border-0">
-                    <TableCell className="pl-5 py-3">
-                      <div className="flex items-center gap-3">
-                        {getTypeIcon(req.type)}
-                        <span className="font-medium text-sm text-slate-700">{getTypeLabel(req.type)}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="py-3">
-                      <div className="flex flex-col">
-                        <span className="text-sm font-semibold text-slate-700">
-                          {formatUTC(req.startDate, "dd MMM")}
-                          {req.returnDate && req.type === 'VACATION' && (
-                            <span className="text-slate-500 font-normal"> - {formatUTC(req.returnDate, "dd MMM")}</span>
-                          )}
-                        </span>
-                        <span className="text-[10px] text-slate-400 mt-0.5">
-                          Solicitado: {formatMXDate(req.createdAt)}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="py-3">
-                      {getStatusBadge(req.status)}
-                    </TableCell>
-                    <TableCell className="text-right pr-5 py-3">
-                      <Link href={`/dashboard/requests/${req.id}`} className="inline-flex">
-                        <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-[#73C056] transition-colors" />
-                      </Link>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
 
-        {/* Vista Mobile - Cards Compactas */}
-        <div className="md:hidden">
-          {requests.length === 0 ? (
-            <div className="flex flex-col items-center justify-center text-center p-8 text-slate-400">
-               <FileText className="h-8 w-8 mb-2 opacity-50" />
-               <p className="text-sm">No hay solicitudes</p>
+      <CardContent className="p-0">
+        {requests.length === 0 ? (
+          <div className="flex flex-col items-center justify-center text-center px-6 py-12">
+            <div className="h-12 w-12 rounded-full bg-slate-50 flex items-center justify-center mb-3">
+              <FileText className="h-6 w-6 text-slate-300" />
             </div>
-          ) : (
-            <div className="divide-y divide-slate-100">
-              {requests.map((req) => (
-                <Link href={`/dashboard/requests/${req.id}`} key={req.id} className="block hover:bg-slate-50 transition-colors">
-                    <div className="p-4 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            {getTypeIcon(req.type)}
-                            <div>
-                                <p className="text-sm font-semibold text-slate-800">{getTypeLabel(req.type)}</p>
-                                <p className="text-xs text-slate-600 mt-0.5">
-                                    {formatUTC(req.startDate, "dd MMM")}
-                                    {req.returnDate && req.type === 'VACATION' && ` - ${formatUTC(req.returnDate, "dd MMM")}`}
-                                </p>
-                                <p className="text-[10px] text-slate-400 mt-0.5">
-                                    Reg: {formatMXDate(req.createdAt)}
-                                </p>
-                            </div>
-                        </div>
-                        <div className="flex flex-col items-end gap-1">
-                            {getStatusBadge(req.status)}
-                        </div>
+            <p className="text-sm font-medium text-slate-600">Aún no tienes solicitudes</p>
+            <p className="text-sm text-slate-500 mt-1">Cuando envíes una, podrás gestionarla aquí.</p>
+            <Button asChild variant="outline" size="sm" className="mt-5 border-[#dce8d7] text-[#3e712c]"><Link href="/?view=new">Crear mi primera solicitud</Link></Button>
+          </div>
+        ) : (
+          <ul className="divide-y divide-slate-100">
+            {requests.map((req) => (
+              <li key={req.id}>
+                <Link
+                  href={`/dashboard/requests/${req.id}`}
+                  className="group flex items-center gap-3 px-5 py-4 sm:px-6 hover:bg-[#f9fbf7] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#3e712c]"
+                >
+                  <div className="hidden shrink-0 sm:block">{getTypeIcon(req.type)}</div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+                      <p className="text-sm font-semibold text-slate-800">{getTypeLabel(req.type)}</p>
+                      {getStatusBadge(req.status)}
                     </div>
+                    <p className="mt-1.5 text-sm text-slate-600">
+                      {formatUTC(req.startDate, 'dd MMM yyyy')}
+                      {req.returnDate && req.type === 'VACATION' && <span className="text-slate-500"> · Regreso: {formatUTC(req.returnDate, 'dd MMM yyyy')}</span>}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {req.type === 'VACATION' && `${req.daysRequested} ${req.daysRequested === 1 ? 'día' : 'días'} · `}Enviada el {formatMXDate(req.createdAt)}
+                    </p>
+                  </div>
+                  <ChevronRight aria-hidden="true" className="h-4 w-4 shrink-0 text-slate-400 group-hover:text-[#3e712c]" />
                 </Link>
-              ))}
-            </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardContent>
+      {totalRequests > 0 && (
+        <div className="border-t border-slate-100 px-5 py-4 sm:px-6">
+          <p className="text-xs text-slate-500">
+            Mostrando {offset + 1}–{offset + requests.length} de {totalRequests} solicitudes
+          </p>
+          {totalPages > 1 && (
+            <nav aria-label="Paginación de solicitudes" className="mt-3 flex flex-wrap items-center justify-between gap-2">
+              {currentPage > 1 ? (
+                <Button asChild variant="outline" size="sm">
+                  <Link href={pageHref(currentPage - 1)} scroll={false}>Anterior</Link>
+                </Button>
+              ) : (
+                <Button variant="outline" size="sm" disabled>Anterior</Button>
+              )}
+              <span className="text-xs text-slate-500" aria-live="polite">
+                Página {currentPage} de {totalPages}
+              </span>
+              {currentPage < totalPages ? (
+                <Button asChild variant="outline" size="sm">
+                  <Link href={pageHref(currentPage + 1)} scroll={false}>Siguiente</Link>
+                </Button>
+              ) : (
+                <Button variant="outline" size="sm" disabled>Siguiente</Button>
+              )}
+            </nav>
           )}
         </div>
-      </CardContent>
-      {totalPages > 1 && (
-        <nav aria-label="Paginación de mis solicitudes" className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 bg-white px-4 py-3">
-          {currentPage > 1 ? (
-            <Button asChild variant="outline" size="sm">
-              <Link href={pageHref(currentPage - 1)} scroll={false}>Anterior</Link>
-            </Button>
-          ) : (
-            <Button variant="outline" size="sm" disabled>Anterior</Button>
-          )}
-          <span className="text-xs text-slate-500" aria-live="polite">
-            Página {currentPage} de {totalPages}
-          </span>
-          {currentPage < totalPages ? (
-            <Button asChild variant="outline" size="sm">
-              <Link href={pageHref(currentPage + 1)} scroll={false}>Siguiente</Link>
-            </Button>
-          ) : (
-            <Button variant="outline" size="sm" disabled>Siguiente</Button>
-          )}
-        </nav>
       )}
     </Card>
   )

@@ -266,11 +266,11 @@ export default async function EmployeeDetailPage({ params }: { params: { id: str
                       <span className="font-bold text-slate-800">{total}</span>
                     </div>
                     <div className="flex justify-between text-xs gap-4">
-                      <span className="text-slate-600">Usados:</span>
+                      <span className="text-slate-600">Aprobados por jefe:</span>
                       <span className="font-bold text-blue-600">-{used}</span>
                     </div>
                     <div className="flex justify-between text-xs gap-4">
-                      <span className="text-slate-600">Por aprobar:</span>
+                      <span className="text-slate-600">Pendientes de jefe:</span>
                       <span className="font-bold text-orange-600">-{pending}</span>
                     </div>
                   </div>

@@ -9,6 +9,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ArrowLeft, FileText, CheckCircle, XCircle, Clock, Users, ExternalLink } from 'lucide-react'
 import { formatUTC, formatMXTime, formatMXDate } from '@/lib/format-date'
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { TeamBalancesTable } from '@/components/team/team-balances-table'
+import { getTeamVacationSummaries } from '@/lib/team-vacations'
 
 const prisma = new PrismaClient()
 
@@ -19,7 +21,7 @@ export default async function TeamHistoryPage() {
   // 1. Obtener al jefe y su lista de subordinados
   const user = await prisma.user.findUnique({
     where: { email: session.user.email },
-    include: { subordinates: true }
+    include: { subordinates: { select: { id: true } } }
   })
 
   if (!user) return redirect('/')
@@ -50,7 +52,8 @@ export default async function TeamHistoryPage() {
     orderBy: { createdAt: 'desc' }
   })
 
-  // Mapa de tipos para visualización
+  // 5. Saldos de vacaciones de cada colaborador
+  const teamMembers = await getTeamVacationSummaries(user.id)
   const requestTypeMap: Record<string, { label: string; emoji: string }> = {
     VACATION: { label: 'Vacaciones', emoji: '🏖️' },
     PERMIT_LATE: { label: 'Llegar Tarde', emoji: '⏰' },
@@ -80,6 +83,11 @@ export default async function TeamHistoryPage() {
                     <p className="text-slate-500">Supervisión de solicitudes de tus {user.subordinates.length} colaboradores</p>
                 </div>
             </div>
+        </div>
+
+        {/* Saldos del equipo */}
+        <div className="mb-8">
+            <TeamBalancesTable members={teamMembers} />
         </div>
 
         {/* Tabla */}

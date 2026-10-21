@@ -21,11 +21,13 @@ type Holiday = {
 export function VacationRequestForm({ 
   userId, 
   holidays = [],
-  userBirthDate // Recibimos la fecha de cumpleaños
+  userBirthDate,
+  onSuccess,
 }: { 
   userId: string
   holidays?: Holiday[]
   userBirthDate?: Date | null
+  onSuccess?: () => void
 }) {
   const [startDate, setStartDate] = useState<Date>()
   const [returnDate, setReturnDate] = useState<Date>()
@@ -126,6 +128,7 @@ export function VacationRequestForm({
       toast.success("Solicitud Enviada", { description: result.message })
       setStartDate(undefined)
       setReturnDate(undefined)
+      onSuccess?.()
     } else {
       toast.error("Error", { description: result.message })
     }
@@ -173,7 +176,7 @@ export function VacationRequestForm({
           <PopoverTrigger asChild>
             <Button 
               variant="outline" 
-              className={`w-full justify-start text-left font-normal border-slate-300 hover:border-[#73C056] hover:bg-[#73C056]/5 transition-colors ${!startDate && "text-muted-foreground"}`}
+              className={`h-auto min-h-11 w-full justify-start whitespace-normal text-left font-normal border-slate-300 hover:border-[#527346] hover:bg-[#edf4e9] transition-colors ${!startDate && "text-muted-foreground"}`}
             >
               <CalendarIconLucide className="mr-2 h-4 w-4 text-[#73C056]" />
               {startDate ? format(startDate, "PPP", { locale: es }) : <span>¿Cuándo inician tus vacaciones?</span>}
@@ -200,7 +203,7 @@ export function VacationRequestForm({
           <PopoverTrigger asChild>
             <Button 
               variant="outline" 
-              className={`w-full justify-start text-left font-normal border-slate-300 hover:border-[#73C056] hover:bg-[#73C056]/5 transition-colors ${!returnDate && "text-muted-foreground"}`}
+              className={`h-auto min-h-11 w-full justify-start whitespace-normal text-left font-normal border-slate-300 hover:border-[#527346] hover:bg-[#edf4e9] transition-colors ${!returnDate && "text-muted-foreground"}`}
             >
               <CalendarCheck className="mr-2 h-4 w-4 text-[#73C056]" />
               {returnDate ? format(returnDate, "PPP", { locale: es }) : <span>¿Cuándo reanudas labores?</span>}
@@ -280,7 +283,7 @@ export function VacationRequestForm({
 
       <Button 
         type="submit" 
-        className="w-full bg-[#73C056] hover:bg-[#62a847] text-white font-semibold py-6 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed" 
+        className="h-11 w-full bg-[#3e712c] hover:bg-[#315a23] text-white font-semibold shadow-none disabled:opacity-50 disabled:cursor-not-allowed"
         disabled={loading || !startDate || !returnDate || (businessDays === 0 && breakdown.birthday === 0)}
       >
         {loading ? (

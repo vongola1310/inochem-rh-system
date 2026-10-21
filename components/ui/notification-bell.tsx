@@ -51,7 +51,7 @@ export function NotificationBell({ userId }: { userId: string }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative">
+        <Button variant="ghost" size="icon" className="relative" aria-label={notifications.length > 0 ? `Notificaciones: ${notifications.length} sin leer` : 'Notificaciones'}>
           <Bell className="h-5 w-5" />
           {notifications.length > 0 && (
             <Badge variant="destructive" className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center text-[10px] rounded-full">
@@ -60,7 +60,7 @@ export function NotificationBell({ userId }: { userId: string }) {
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-80">
+      <DropdownMenuContent align="end" className="w-80 max-w-[calc(100vw-2rem)]">
         <DropdownMenuLabel>Notificaciones</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {notifications.length === 0 ? (
