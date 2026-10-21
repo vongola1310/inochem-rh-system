@@ -38,7 +38,7 @@ export function ChangePasswordForm({ isPasswordChanged }: { isPasswordChanged: b
                 </p>
             </div>
             <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 text-xs text-slate-600">
-                Si olvidaste tu clave, contacta al departamento de RH para un reseteo manual.
+                Si olvidaste tu clave, contacta al departamento de RH para restablecerla.
             </div>
         </div>
     )
@@ -49,7 +49,7 @@ export function ChangePasswordForm({ isPasswordChanged }: { isPasswordChanged: b
     <form action={handleSubmit} className="space-y-4">
         <div className="p-3 bg-amber-50 border-l-4 border-amber-400 rounded-r-md mb-4">
             <p className="text-xs text-amber-800 font-medium">
-                Acción Requerida: Por seguridad, debes cambiar tu contraseña temporal (Número de Empleado) por una personal.
+                Por seguridad, cambia la contraseña temporal que te proporcionó RH por una personal.
             </p>
         </div>
 

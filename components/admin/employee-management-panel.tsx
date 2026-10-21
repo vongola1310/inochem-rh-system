@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { 
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter 
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription
 } from "@/components/ui/dialog"
 import { 
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger 
@@ -13,6 +13,8 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Pencil, Trash2, Save, Calculator, Shield, Cake, Check, ChevronsUpDown, Users } from 'lucide-react'
 import { updateEmployee, deleteEmployee } from '@/app/actions/employee-management'
+import { ResetEmployeePasswordForm } from '@/components/admin/reset-employee-password-form'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from "sonner"
 import { format } from 'date-fns'
 import { cn } from "@/lib/utils"
@@ -91,8 +93,15 @@ export function EmployeeManagementPanel({ employee, bosses }: { employee: Employ
         </DialogTrigger>
         <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Editar Información del Empleado</DialogTitle>
+            <DialogTitle>Editar perfil</DialogTitle>
+            <DialogDescription>{employee.name} · #{employee.employeeNumber}</DialogDescription>
           </DialogHeader>
+          <Tabs defaultValue="profile">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="profile">Datos del perfil</TabsTrigger>
+              <TabsTrigger value="password">Contraseña</TabsTrigger>
+            </TabsList>
+            <TabsContent value="profile" forceMount className="data-[state=inactive]:hidden">
           <form action={handleUpdate} className="grid gap-6 py-4">
             <input type="hidden" name="id" value={employee.id} />
             
@@ -258,6 +267,11 @@ export function EmployeeManagementPanel({ employee, bosses }: { employee: Employ
               </Button>
             </DialogFooter>
           </form>
+            </TabsContent>
+            <TabsContent value="password">
+              <ResetEmployeePasswordForm employeeId={employee.id} />
+            </TabsContent>
+          </Tabs>
         </DialogContent>
       </Dialog>
 

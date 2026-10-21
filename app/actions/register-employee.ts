@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { differenceInYears } from 'date-fns'
 import bcrypt from 'bcryptjs'
+import { canManageEmployees } from '@/lib/employee-access'
 
 const prisma = new PrismaClient()
 
@@ -30,6 +31,7 @@ const registerSchema = z.object({
 
 export async function registerEmployee(formData: FormData) {
   try {
+    if (!await canManageEmployees()) return { success: false, message: 'No tienes permiso para registrar usuarios.' }
     // 1. Recopilar datos del formulario
     const rawBossId = formData.get('bossId')
     

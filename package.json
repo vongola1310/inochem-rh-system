@@ -7,7 +7,8 @@
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
-    "test:balances": "node --test tests/vacation-balances.test.cjs"
+    "test:balances": "node --test tests/vacation-balances.test.cjs",
+    "test:passwords": "node --test tests/reset-employee-password.test.cjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",

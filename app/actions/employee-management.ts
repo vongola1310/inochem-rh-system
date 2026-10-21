@@ -3,6 +3,7 @@
 import { PrismaClient, Role } from '@prisma/client'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { canManageEmployees } from '@/lib/employee-access'
 
 const prisma = new PrismaClient()
 
@@ -33,6 +34,7 @@ export async function updateEmployee(formData: FormData) {
   const usedDays = parseInt(formData.get('usedDays') as string) || 0
 
   try {
+    if (!await canManageEmployees()) return { success: false, message: 'No tienes permiso para editar usuarios.' }
     await prisma.$transaction([
       prisma.user.update({
         where: { id },
@@ -59,6 +61,7 @@ export async function updateEmployee(formData: FormData) {
 // 2. ELIMINAR EMPLEADO
 export async function deleteEmployee(employeeId: string) {
   try {
+    if (!await canManageEmployees()) return { success: false, message: 'No tienes permiso para eliminar usuarios.' }
     await prisma.$transaction(async (tx) => {
       await tx.notification.deleteMany({ where: { userId: employeeId } })
       await tx.request.deleteMany({ where: { userId: employeeId } })

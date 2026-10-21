@@ -19,8 +19,10 @@ export default async function UsersPage() {
 
   // 1. OBTENEMOS TODOS LOS EMPLEADOS
   const allEmployees = await prisma.user.findMany({
-    include: { 
-      balance: true,
+    select: {
+      id: true, name: true, email: true, employeeNumber: true,
+      jobTitle: true, entryDate: true, role: true,
+      balance: { select: { totalDays: true, usedDays: true, pendingDays: true } },
       boss: { select: { name: true, jobTitle: true } }
     },
     orderBy: { name: 'asc' }

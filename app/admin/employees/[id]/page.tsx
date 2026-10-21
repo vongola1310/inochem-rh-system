@@ -77,9 +77,11 @@ export default async function EmployeeDetailPage({ params }: { params: { id: str
   // Obtener datos completos del empleado
   const employee = await prisma.user.findUnique({
     where: { id },
-    include: { 
+    select: {
+      id: true, name: true, email: true, employeeNumber: true, jobTitle: true,
+      entryDate: true, birthDate: true, bossId: true, role: true,
       balance: true,
-      boss: true,
+      boss: { select: { name: true, jobTitle: true } },
       requests: { 
         orderBy: { createdAt: 'desc' }
       }
