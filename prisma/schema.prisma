@@ -22,6 +22,12 @@ model User {
   backupEndDate   DateTime?
   backupId        String?
   backupStartDate DateTime?
+  isBlacklisted   Boolean          @default(false)
+  blacklistedAt   DateTime?
+  canUploadFieldReports Boolean @default(false)
+  fieldReports    FieldReport[]
+  fieldReportDays FieldReportDay[]
+  fieldReportSchedule FieldReportSchedule?
   passwordChanged Boolean          @default(false)
   birthDate       DateTime?
   notifications   Notification[]
@@ -31,6 +37,9 @@ model User {
   boss            User?            @relation("Management", fields: [bossId], references: [id])
   subordinates    User[]           @relation("Management")
   balance         VacationBalance?
+  medicalLeaves   MedicalLeave[]
+  attendanceDays  AttendanceDay[] @relation("EmployeeAttendance")
+  assignedAttendance AttendanceDay[] @relation("ManagerAttendance")
 }
 
 model VacationBalance {
@@ -107,4 +116,186 @@ enum RequestType {
   PERMIT_EARLY
   PERMIT_OTHER
   PERMIT_BIRTHDAY
+  PERMIT_HOME_OFFICE
+}
+
+model MedicalLeave {
+  id          String @id @default(cuid())
+  userId      String
+  user        User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  startDate   DateTime @db.Date
+  endDate     DateTime @db.Date
+  calendarDays Int
+  series      String
+  folio       String
+  kind        MedicalLeaveKind
+  notes       String @default("")
+  createdById String
+  updatedById String
+  cancelledAt DateTime?
+  cancelReason String?
+  version     Int @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  @@unique([userId, series, folio])
+  @@index([userId, startDate, endDate])
+}
+
+model AttendanceImport {
+  id           String @id @default(cuid())
+  startDate    DateTime @db.Date
+  endDate      DateTime @db.Date
+  status       AttendanceImportStatus @default(DRAFT)
+  sourceDigest String @unique
+  sources      Json
+  configuration Json
+  preview      Json
+  previewHash  String
+  rulesVersion String
+  needsRefresh Boolean @default(false)
+  version      Int @default(0)
+  createdById  String
+  publishedById String?
+  publishedAt  DateTime?
+  closedAt     DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  days         AttendanceDay[]
+  events       AttendanceEvent[]
+  @@index([startDate, endDate, status])
+}
+
+model AttendanceDay {
+  id            String @id @default(cuid())
+  importId      String
+  batch         AttendanceImport @relation(fields: [importId], references: [id], onDelete: Restrict)
+  userId        String
+  user          User @relation("EmployeeAttendance", fields: [userId], references: [id], onDelete: Restrict)
+  managerId     String?
+  manager       User? @relation("ManagerAttendance", fields: [managerId], references: [id], onDelete: Restrict)
+  date          DateTime @db.Date
+  isWorkday     Boolean @default(true)
+  entrySeconds  Int?
+  exitSeconds   Int?
+  exitEstimated Boolean @default(false)
+  lateMinutes   Int @default(0)
+  detectedIssues String[]
+  coverage      String[]
+  systemNotes   String[]
+  evidence      Json
+  reviewStatus  AttendanceReviewStatus
+  decision      AttendanceDecision @default(PENDING)
+  justification String?
+  submittedAt   DateTime?
+  managerComment String?
+  reviewedById  String?
+  reviewedAt    DateTime?
+  version       Int @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  events        AttendanceEvent[]
+  @@unique([userId, date])
+  @@index([managerId, reviewStatus])
+  @@index([importId, reviewStatus])
+}
+
+model AttendanceEvent {
+  id          String @id @default(cuid())
+  importId    String?
+  batch       AttendanceImport? @relation(fields: [importId], references: [id], onDelete: Restrict)
+  dayId       String?
+  day         AttendanceDay? @relation(fields: [dayId], references: [id], onDelete: Restrict)
+  actorId     String
+  action      String
+  details     Json
+  createdAt   DateTime @default(now())
+  @@index([importId, createdAt])
+  @@index([dayId, createdAt])
+}
+
+enum MedicalLeaveKind {
+  MATERNAL
+  GENERAL
+  WORK_RISK
+}
+
+enum AttendanceImportStatus {
+  DRAFT
+  PUBLISHED
+  CLOSED
+}
+
+enum AttendanceReviewStatus {
+  WAITING_EMPLOYEE
+  WAITING_MANAGER
+  RESOLVED
+}
+
+enum AttendanceDecision {
+  INCIDENT
+  PENDING
+  NONE
+  JUSTIFIED
+  LATE
+  ABSENCE
+  EARLY_EXIT
+  LATE_EARLY_EXIT
+}
+
+model FieldReport {
+  id           String @id @default(cuid())
+  managerId    String
+  manager      User @relation(fields: [managerId], references: [id], onDelete: Restrict)
+  startDate    DateTime @db.Date
+  endDate      DateTime @db.Date
+  sourceDigest String
+  source       Json
+  mappings     Json
+  coverageMode String
+  status       String @default("DRAFT")
+  version      Int @default(0)
+  confirmedAt  DateTime?
+  confirmedPreview Json?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  days         FieldReportDay[]
+  @@unique([managerId, sourceDigest, startDate, endDate])
+  @@index([status, startDate, endDate])
+}
+
+model FieldReportDay {
+  id        String @id @default(cuid())
+  reportId  String
+  report    FieldReport @relation(fields: [reportId], references: [id], onDelete: Restrict)
+  userId    String
+  user      User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  date      DateTime @db.Date
+  evidence  Json
+  @@unique([reportId, userId, date])
+  @@index([userId, date])
+}
+
+model FieldReportSchedule {
+  userId    String @id
+  user      User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  nextDueDate DateTime @db.Date
+  lastReminderDate DateTime? @db.Date
+  updatedAt DateTime @updatedAt
+}
+
+model ReducedWorkday {
+  id           String @id @default(cuid())
+  startDate    DateTime @db.Date
+  endDate      DateTime @db.Date
+  site         String
+  startSeconds Int
+  endSeconds   Int
+  notes        String
+  version      Int @default(0)
+  cancelledAt  DateTime?
+  createdById  String
+  updatedById  String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  @@index([startDate, endDate])
 }

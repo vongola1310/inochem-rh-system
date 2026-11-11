@@ -46,7 +46,8 @@ export async function updateEmployee(formData: FormData) {
           totalDays: totalDays,
           usedDays: usedDays
         }
-      })
+      }),
+      prisma.attendanceImport.updateMany({ where: { status: { in: ['PUBLISHED', 'CLOSED'] }, days: { some: { userId: id } } }, data: { needsRefresh: true } })
     ])
 
     revalidatePath(`/admin/employees/${id}`)

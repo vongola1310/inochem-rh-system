@@ -41,6 +41,7 @@ const TYPE_LABELS: Record<string, string> = {
   PERMIT_LATE: "Permiso para Llegar Tarde",
   PERMIT_EARLY: "Permiso para Salir Temprano",
   PERMIT_ABSENCE: "Permiso de Ausencia",
+  PERMIT_HOME_OFFICE: "Permiso de Home Office",
   PERMIT_BIRTHDAY: "Permiso de Cumpleaños",
   PERMIT_OTHER: "Permiso Especial",
 };

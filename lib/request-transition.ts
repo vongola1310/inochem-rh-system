@@ -2,6 +2,7 @@ import type { Prisma, RequestStatus } from '@prisma/client'
 import { withBalanceTransaction, renewBalanceInTransaction, getCycleUsage } from './vacation-balance'
 import { getCycleBounds } from './vacation-cycle'
 import { calculateVacationUsage } from './vacation-usage'
+import { markAttendanceStale } from './attendance/staleness'
 
 type TransitionData = Pick<Prisma.RequestUpdateManyMutationInput,
   'approvedByBoss' | 'bossApprovalDate' | 'approvedByHR' | 'hrApprovalDate' | 'rejectionReason'>
@@ -18,7 +19,7 @@ export async function transitionRequest(
     const request = await tx.request.findUnique({
       where: { id: requestId },
       select: { id: true, userId: true, type: true, status: true, startDate: true, daysRequested: true,
-        observations: true, user: { select: { entryDate: true } } },
+        observations: true, returnDate: true, endDate: true, user: { select: { entryDate: true } } },
     })
     if (!request || !expectedStatuses.includes(request.status)) return false
     const asOf = new Date()
@@ -32,6 +33,7 @@ export async function transitionRequest(
       },
     })
     if (changed.count === 0) return false
+    await markAttendanceStale(tx, request.startDate, request.returnDate || request.endDate || request.startDate, request.userId)
     if (request.type === 'VACATION') {
       const { cycleStart, cycleEnd } = getCycleBounds(request.user.entryDate, asOf)
       const before = calculateVacationUsage([request], cycleStart, cycleEnd)

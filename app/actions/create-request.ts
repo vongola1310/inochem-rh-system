@@ -8,6 +8,9 @@ import { checkAndRenewBalance } from '@/lib/check-renewal'
 import { getCycleBounds } from '@/lib/vacation-cycle'
 import { calculateVacationUsage } from '@/lib/vacation-usage'
 import { withBalanceTransaction, renewBalanceInTransaction } from '@/lib/vacation-balance'
+import { auth } from '@/auth'
+import { timeSeconds } from '@/lib/attendance/dates'
+import { markAttendanceStale } from '@/lib/attendance/staleness'
 
 const prisma = new PrismaClient()
 
@@ -44,6 +47,9 @@ export async function createRequest(prevState: any, formData: FormData) {
   try {
     const userId = formData.get('userId') as string
     const type = formData.get('type') as RequestType
+    const session = await auth()
+    if (!session?.user?.id || session.user.id !== userId) return { success: false, message: 'Solo puedes crear solicitudes para tu propia cuenta.' }
+    if (!Object.values(RequestType).includes(type)) return { success: false, message: 'Tipo de solicitud inválido.' }
     const startDateRaw = new Date(formData.get('startDate') as string)
     const returnDateRaw = formData.get('returnDate') 
         ? new Date(formData.get('returnDate') as string) 
@@ -54,6 +60,8 @@ export async function createRequest(prevState: any, formData: FormData) {
 
     const permitTime = formData.get('permitTime') as string || null
     const observations = formData.get('observations') as string
+    if (!Number.isFinite(startDate.getTime()) || !Number.isFinite(returnDate.getTime())) return { success: false, message: 'Revisa las fechas de la solicitud.' }
+    if (['PERMIT_LATE', 'PERMIT_EARLY'].includes(type) && timeSeconds(permitTime || '') === null) return { success: false, message: 'Indica la hora autorizada en formato de 24 horas.' }
 
     await checkAndRenewBalance(userId)
     const user = await prisma.user.findUnique({
@@ -133,7 +141,7 @@ export async function createRequest(prevState: any, formData: FormData) {
                 return { success: false, message: `Saldo insuficiente. Tienes ${currentBalance} días y pides ${daysRequested}.` }
             }
         } else {
-             if (type === 'PERMIT_ABSENCE') daysRequested = 1;
+             if (['PERMIT_ABSENCE', 'PERMIT_HOME_OFFICE', 'PERMIT_BIRTHDAY'].includes(type)) daysRequested = 1;
         }
 
         // Si estamos en la zona de peligro, Auto-Aprobamos. Si no, flujo normal.
@@ -208,6 +216,7 @@ async function createSingleRequestTx(tx: Prisma.TransactionClient, user: any, ty
             permitTime: time,
         }
     })
+    if (autoApprove) await markAttendanceStale(tx, start, end, user.id)
 
     // El ciclo de inicio decide el cargo, también al solicitar el próximo año calendario.
     if (type === 'VACATION' && days > 0) {

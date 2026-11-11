@@ -3,12 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "predev": "node scripts/prepare-prisma.cjs",
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
     "test:balances": "node --test tests/vacation-balances.test.cjs",
-    "test:passwords": "node --test tests/reset-employee-password.test.cjs"
+    "test:passwords": "node --test tests/reset-employee-password.test.cjs",
+    "test:attendance": "node --test tests/attendance-engine.test.cjs tests/attendance-grouping.test.cjs tests/field-reports.test.cjs tests/attendance-integration.test.cjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",

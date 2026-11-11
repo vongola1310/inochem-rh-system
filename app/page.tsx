@@ -31,7 +31,7 @@ export default async function Home({ searchParams }: {
   const user = await prisma.user.findUnique({
     where: { email: session.user.email },
     select: {
-      id: true, name: true, jobTitle: true, role: true,
+      id: true, name: true, jobTitle: true, role: true, canUploadFieldReports: true, isBlacklisted: true,
       entryDate: true, birthDate: true, balance: true,
       backupId: true, backupStartDate: true, backupEndDate: true,
       subordinates: { select: { id: true } },
@@ -115,7 +115,7 @@ export default async function Home({ searchParams }: {
       </header>
 
       <div className="mx-auto grid max-w-[1480px] gap-5 px-4 py-5 sm:px-6 lg:grid-cols-[184px_minmax(0,1fr)] lg:gap-8 lg:px-8 lg:py-8">
-        <DashboardNavigation view={view} isManager={isManager} isHR={user.role === 'HR'} pendingCount={pendingApprovalsCount} />
+        <DashboardNavigation canUploadFieldReports={(user.canUploadFieldReports || user.role === 'HR' || user.role === 'ADMIN') && !user.isBlacklisted} view={view} isManager={isManager} isHR={user.role === 'HR'} isAdmin={user.role === 'ADMIN'} pendingCount={pendingApprovalsCount} />
         <main id="dashboard-content" className="min-w-0 scroll-mt-24 space-y-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>

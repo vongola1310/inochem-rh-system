@@ -79,7 +79,7 @@ export default async function EmployeeDetailPage({ params }: { params: { id: str
     where: { id },
     select: {
       id: true, name: true, email: true, employeeNumber: true, jobTitle: true,
-      entryDate: true, birthDate: true, bossId: true, role: true,
+      entryDate: true, birthDate: true, bossId: true, role: true, isBlacklisted: true,
       balance: true,
       boss: { select: { name: true, jobTitle: true } },
       requests: { 
@@ -92,6 +92,7 @@ export default async function EmployeeDetailPage({ params }: { params: { id: str
 
   // Obtener lista de posibles jefes para el formulario de edición
   const allUsers = await prisma.user.findMany({
+    where: { isBlacklisted: false },
     select: { id: true, name: true, jobTitle: true },
     orderBy: { name: 'asc' }
   })
@@ -130,6 +131,7 @@ export default async function EmployeeDetailPage({ params }: { params: { id: str
     PERMIT_LATE: { label: 'Llegar Tarde', emoji: '⏰', color: 'amber' },
     PERMIT_EARLY: { label: 'Salir Temprano', emoji: '🏃', color: 'purple' },
     PERMIT_ABSENCE: { label: 'Ausencia', emoji: '📅', color: 'red' },
+    PERMIT_HOME_OFFICE: { label: 'Home Office', emoji: '🏠', color: 'blue' },
     PERMIT_BIRTHDAY: { label: 'Cumpleaños', emoji: '🎂', color: 'pink' },
     PERMIT_OTHER: { label: 'Otro Permiso', emoji: '📝', color: 'slate' }
   }

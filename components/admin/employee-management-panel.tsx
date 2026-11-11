@@ -13,6 +13,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Pencil, Trash2, Save, Calculator, Shield, Cake, Check, ChevronsUpDown, Users } from 'lucide-react'
 import { updateEmployee, deleteEmployee } from '@/app/actions/employee-management'
+import { EmployeeBlacklistButton } from './employee-blacklist-button'
 import { ResetEmployeePasswordForm } from '@/components/admin/reset-employee-password-form'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from "sonner"
@@ -35,6 +36,7 @@ import {
 } from "@/components/ui/popover"
 
 type EmployeeData = {
+  isBlacklisted: boolean;
   id: string;
   name: string;
   email: string;
@@ -82,7 +84,9 @@ export function EmployeeManagementPanel({ employee, bosses }: { employee: Employ
   }
 
   return (
-    <div className="flex gap-3 mt-4 md:mt-0">
+    <div className="flex flex-wrap items-center gap-3 mt-4 md:mt-0">
+      <EmployeeBlacklistButton employee={employee} />
+      {employee.isBlacklisted && <span className="rounded-full bg-slate-800 px-3 py-1 text-xs text-white">Lista negra</span>}
       
       {/* BOTÓN EDITAR */}
       <Dialog open={isEditing} onOpenChange={setIsEditing}>

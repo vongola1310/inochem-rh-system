@@ -21,7 +21,7 @@ export default async function UsersPage() {
   const allEmployees = await prisma.user.findMany({
     select: {
       id: true, name: true, email: true, employeeNumber: true,
-      jobTitle: true, entryDate: true, role: true,
+      jobTitle: true, entryDate: true, role: true, isBlacklisted: true,
       balance: { select: { totalDays: true, usedDays: true, pendingDays: true } },
       boss: { select: { name: true, jobTitle: true } }
     },
@@ -29,7 +29,7 @@ export default async function UsersPage() {
   })
 
   // Lista simplificada para el select del formulario de registro
-  const potentialBosses = allEmployees.map(e => ({
+  const potentialBosses = allEmployees.filter(e => !e.isBlacklisted).map(e => ({
     id: e.id,
     name: e.name,
     jobTitle: e.jobTitle,

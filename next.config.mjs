@@ -1,5 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+    // Dos archivos de checador de hasta 3 MB, más los campos del formulario.
+    experimental: { serverActions: { bodySizeLimit: '8mb' } },
     // Configuración para evitar errores de paquetes ESM en Next 14
     transpilePackages: ['lucide-react', 'date-fns'],
     

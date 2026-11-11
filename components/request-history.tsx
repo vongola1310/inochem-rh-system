@@ -55,6 +55,7 @@ const getTypeLabel = (type: string) => {
   if (type === 'PERMIT_LATE') return 'Llegada Tarde'
   if (type === 'PERMIT_EARLY') return 'Salida Temprana'
   if (type === 'PERMIT_ABSENCE') return 'Falta Justificada'
+  if (type === 'PERMIT_HOME_OFFICE') return 'Home Office'
   if (type === 'PERMIT_BIRTHDAY') return 'Cumpleaños'
   return 'Permiso'
 }

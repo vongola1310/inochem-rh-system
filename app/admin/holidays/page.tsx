@@ -12,22 +12,39 @@ import { revalidatePath } from 'next/cache'
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { canManageEmployees } from '@/lib/employee-access'
+import { attendanceTransaction, markAttendanceStale } from '@/lib/attendance/service'
+import { dateKey, parseDate } from '@/lib/attendance/dates'
 
 const prisma = new PrismaClient()
 
 async function addHoliday(formData: FormData) {
   'use server'
+  if (!await canManageEmployees()) return
   const dateStr = formData.get('date') as string
   const name = formData.get('name') as string
-  const date = new Date(dateStr + 'T12:00:00Z') 
-  await prisma.holiday.create({ data: { date, name } })
+  const date = parseDate(dateStr)
+  if (!name?.trim() || name.length > 200) return
+  await attendanceTransaction(async tx => {
+    const exists = await tx.holiday.findFirst({ where: { date: { gte: date, lt: new Date(date.getTime() + 86400000) } } })
+    if (exists) return
+    await tx.holiday.create({ data: { date, name: name.trim() } })
+    await markAttendanceStale(tx, date, date)
+  })
   revalidatePath('/admin/holidays')
 }
 
 async function deleteHoliday(formData: FormData) {
   'use server'
+  if (!await canManageEmployees()) return
   const id = formData.get('id') as string
-  await prisma.holiday.delete({ where: { id } })
+  await attendanceTransaction(async tx => {
+    const holiday = await tx.holiday.findUnique({ where: { id } })
+    if (!holiday) return
+    await tx.holiday.delete({ where: { id } })
+    const day = parseDate(dateKey(holiday.date))
+    await markAttendanceStale(tx, day, day)
+  })
   revalidatePath('/admin/holidays')
 }
 

@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
+import { EmployeeBlacklistButton } from './employee-blacklist-button'
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow
 } from "@/components/ui/table"
@@ -21,6 +22,7 @@ type EmployeeData = {
   employeeNumber: string
   jobTitle: string | null
   entryDate: Date
+  isBlacklisted: boolean
   role: string
   boss: { name: string; jobTitle: string | null } | null
   balance: { totalDays: number; usedDays: number; pendingDays: number } | null
@@ -36,6 +38,7 @@ export function EmployeesTable({ initialData }: { initialData: any[] }) {
   }, [initialData])
 
   const [searchTerm, setSearchTerm] = useState("")
+  const [statusFilter, setStatusFilter] = useState("active")
   const [roleFilter, setRoleFilter] = useState("ALL")
 
   // Filtramos los datos en tiempo real
@@ -61,9 +64,9 @@ export function EmployeesTable({ initialData }: { initialData: any[] }) {
         }
       }
 
-      return matchesSearch && matchesRole
+      return matchesSearch && matchesRole && (statusFilter === "all" || (statusFilter === "blacklisted" ? emp.isBlacklisted : !emp.isBlacklisted))
     })
-  }, [data, searchTerm, roleFilter])
+  }, [data, searchTerm, roleFilter, statusFilter])
 
   // Calcular antigüedad
   const calculateSeniority = (entryDate: Date) => {
@@ -130,6 +133,7 @@ export function EmployeesTable({ initialData }: { initialData: any[] }) {
             )}
           </div>
 
+          <label className="text-xs text-slate-600">Estado<select aria-label="Estado del colaborador" value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="block h-10 rounded-md border border-slate-300 bg-white px-3 text-sm"><option value="active">Activos</option><option value="blacklisted">Lista negra</option><option value="all">Todos</option></select></label>
           {/* Filtro por Rol */}
           <div className="w-full sm:w-[220px]">
             <Select value={roleFilter} onValueChange={setRoleFilter}>
@@ -251,7 +255,7 @@ export function EmployeesTable({ initialData }: { initialData: any[] }) {
                           </AvatarFallback>
                         </Avatar>
                         <div>
-                          <p className="font-bold text-sm text-slate-900">{emp.name}</p>
+                          <p className="font-bold text-sm text-slate-900">{emp.name}</p>{emp.isBlacklisted && <Badge className="bg-slate-800 text-white">Lista negra</Badge>}
                           <div className="flex items-center gap-2 mt-0.5">
                             <span className="text-xs text-slate-500 font-mono">#{emp.employeeNumber}</span>
                             {emp.role === 'HR' && (
@@ -318,6 +322,7 @@ export function EmployeesTable({ initialData }: { initialData: any[] }) {
 
                     {/* Acción */}
                     <TableCell className="text-right pr-6">
+                      <EmployeeBlacklistButton employee={emp} />
                       <Link href={`/admin/employees/${emp.id}`}>
                         <Button 
                           variant="ghost" 

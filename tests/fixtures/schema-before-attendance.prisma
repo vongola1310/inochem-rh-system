@@ -1,0 +1,110 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String           @id @default(cuid())
+  employeeNumber  String           @unique
+  name            String
+  email           String           @unique
+  password        String
+  role            Role             @default(EMPLOYEE)
+  jobTitle        String?
+  entryDate       DateTime
+  bossId          String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  backupEndDate   DateTime?
+  backupId        String?
+  backupStartDate DateTime?
+  passwordChanged Boolean          @default(false)
+  birthDate       DateTime?
+  notifications   Notification[]
+  requests        Request[]        @relation("UserRequests")
+  backupUser      User?            @relation("BackupDelegation", fields: [backupId], references: [id])
+  backupFor       User[]           @relation("BackupDelegation")
+  boss            User?            @relation("Management", fields: [bossId], references: [id])
+  subordinates    User[]           @relation("Management")
+  balance         VacationBalance?
+}
+
+model VacationBalance {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  totalDays         Int      @default(0)
+  usedDays          Int      @default(0)
+  pendingDays       Int      @default(0)
+  lastYearProcessed Int      @default(0)
+  lastUpdated       DateTime @default(now())
+  user              User     @relation(fields: [userId], references: [id])
+}
+
+model Request {
+  id               String        @id @default(cuid())
+  type             RequestType
+  status           RequestStatus @default(PENDING_BOSS)
+  startDate        DateTime
+  endDate          DateTime?
+  returnDate       DateTime?
+  daysRequested    Int
+  permitTime       String?
+  reason           String?
+  evidenceUrl      String?
+  observations     String?
+  userId           String
+  rejectionReason  String?
+  approvedByBoss   Boolean       @default(false)
+  bossApprovalDate DateTime?
+  approvedByHR     Boolean       @default(false)
+  hrApprovalDate   DateTime?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  user             User          @relation("UserRequests", fields: [userId], references: [id])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  message   String
+  link      String?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model Holiday {
+  id        String   @id @default(cuid())
+  date      DateTime @unique
+  name      String
+  createdAt DateTime @default(now())
+}
+
+enum Role {
+  EMPLOYEE
+  ADMIN
+  HR
+}
+
+enum RequestStatus {
+  PENDING_BOSS
+  PENDING_HR
+  APPROVED
+  REJECTED
+  CANCELLED
+  CANCELLATION_REQUESTED
+}
+
+enum RequestType {
+  VACATION
+  PERMIT_ABSENCE
+  PERMIT_LATE
+  PERMIT_EARLY
+  PERMIT_OTHER
+  PERMIT_BIRTHDAY
+}

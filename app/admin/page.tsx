@@ -54,6 +54,7 @@ export default async function AdminDashboard() {
     PERMIT_LATE: { label: 'Llegar Tarde', icon: '⏰', variant: 'amber' },
     PERMIT_EARLY: { label: 'Salir Temprano', icon: '🏃', variant: 'purple' },
     PERMIT_ABSENCE: { label: 'Ausencia', icon: '📅', variant: 'red' },
+    PERMIT_HOME_OFFICE: { label: 'Home Office', icon: '🏠', variant: 'blue' },
     PERMIT_BIRTHDAY: { label: 'Cumpleaños', icon: '🎂', variant: 'pink' },
     PERMIT_OTHER: { label: 'Otro Permiso', icon: '📝', variant: 'gray' }
   }

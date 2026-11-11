@@ -146,6 +146,7 @@ export function PermitRequestForm({
             <SelectItem value="PERMIT_LATE"><span>⏰</span> Llegar Tarde</SelectItem>
             <SelectItem value="PERMIT_EARLY"><span>🏃</span> Salir Temprano</SelectItem>
             <SelectItem value="PERMIT_ABSENCE"><span>📅</span> Faltar (Día completo)</SelectItem>
+            <SelectItem value="PERMIT_HOME_OFFICE"><span>🏠</span> Home Office</SelectItem>
             <SelectItem value="PERMIT_BIRTHDAY"><span className="text-pink-600 font-medium"><Cake className="h-4 w-4 inline mr-1"/> Día de Cumpleaños</span></SelectItem>
             <SelectItem value="PERMIT_OTHER"><span>📝</span> Otro</SelectItem>
           </SelectContent>
@@ -200,7 +201,7 @@ export function PermitRequestForm({
           <Label className="text-slate-700 font-medium">Horario</Label>
           <div className="relative">
             <Clock className="absolute left-3 top-3 h-4 w-4 text-[#73C056]" />
-            <Input name="permitTime" placeholder="Ej: 10:30 AM" className="pl-10 border-slate-300 focus:border-[#73C056]" />
+            <Input name="permitTime" type="time" required className="pl-10 border-slate-300 focus:border-[#73C056]" />
           </div>
         </div>
       )}

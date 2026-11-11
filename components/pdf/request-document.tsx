@@ -245,6 +245,7 @@ export const RequestDocument = ({ data }: { data: RequestData }) => {
                          <Text style={styles.headerValue}>{data.type === 'PERMIT_ABSENCE' ? '[ X ]' : '[   ]'} Faltar</Text>
                          <Text style={styles.headerValue}>{data.type === 'PERMIT_BIRTHDAY' ? '[ X ]' : '[   ]'} Cumpleaños</Text>
                          <Text style={styles.headerValue}>{data.type === 'PERMIT_OTHER' ? '[ X ]' : '[   ]'} Otro</Text>
+                         <Text style={styles.headerValue}>{data.type === 'PERMIT_HOME_OFFICE' ? '[ X ]' : '[   ]'} Home Office</Text>
                     </View>
                 </View>
                 

@@ -6,13 +6,18 @@ type NavigationProps = {
   view: 'home' | 'requests' | 'new' | 'approvals'
   isManager: boolean
   isHR: boolean
+  isAdmin?: boolean
+  canUploadFieldReports?: boolean
   pendingCount: number
 }
 
-export function DashboardNavigation({ view, isManager, isHR, pendingCount }: NavigationProps) {
+export function DashboardNavigation({ view, isManager, isHR, isAdmin = false, canUploadFieldReports = false, pendingCount }: NavigationProps) {
   const links = [
     { label: 'Inicio', href: '/', icon: House, active: view === 'home', count: 0 },
     { label: 'Mis solicitudes', href: '/?view=requests', icon: FileText, active: view === 'requests' || view === 'new', count: 0 },
+    { label: 'Mi asistencia', href: '/attendance', icon: CalendarDays, active: false, count: 0 },
+    ...((isHR || isAdmin) ? [{ label: 'Días de jornada corta o reducida', href: '/admin/reduced-workdays', icon: CalendarDays, active: false, count: 0 }] : []),
+    ...(canUploadFieldReports ? [{ label: 'Subir reporte de personal de campo', href: '/field-reports', icon: FileText, active: false, count: 0 }] : []),
     ...(isManager ? [
       { label: 'Aprobaciones', href: '/?view=approvals', icon: ClipboardCheck, active: view === 'approvals', count: pendingCount },
       { label: 'Colaboradores', href: '/team/history', icon: Users, active: false, count: 0 },
@@ -23,6 +28,9 @@ export function DashboardNavigation({ view, isManager, isHR, pendingCount }: Nav
     { label: 'Usuarios', href: '/admin/users', icon: Users },
     { label: 'Reportes', href: '/admin/reports', icon: ChartNoAxesCombined },
     { label: 'Días festivos', href: '/admin/holidays', icon: CalendarDays },
+    { label: 'Incidencias', href: '/admin/attendance', icon: ClipboardCheck },
+    { label: 'Reportes de campo', href: '/field-reports', icon: FileText },
+    { label: 'Incapacidades', href: '/admin/medical-leaves', icon: CalendarDays },
   ]
   const linkClass = 'flex min-h-11 items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3e712c]'
   const content = (
@@ -39,6 +47,7 @@ export function DashboardNavigation({ view, isManager, isHR, pendingCount }: Nav
         <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Administración</p>
         <ul className="grid gap-1 sm:grid-cols-2 lg:grid-cols-1">{adminLinks.map(({ label, href, icon: Icon }) => <li key={href}><Link href={href} className={cn(linkClass, 'text-slate-600 hover:bg-white hover:text-slate-900')}><Icon className="h-4 w-4 shrink-0" />{label}</Link></li>)}</ul>
       </div>}
+      {isAdmin && !isHR && <div className="mt-5 space-y-1 border-t border-slate-200 pt-4"><Link href="/admin/attendance" className={cn(linkClass, 'text-slate-600 hover:bg-white')}><ClipboardCheck className="h-4 w-4" />Incidencias</Link><Link href="/admin/medical-leaves" className={cn(linkClass, 'text-slate-600 hover:bg-white')}><CalendarDays className="h-4 w-4" />Incapacidades</Link></div>}
       <div className="mt-5 border-t border-slate-200 pt-4"><Link href="/profile" className={cn(linkClass, 'text-slate-600 hover:bg-white hover:text-slate-900')}><UserRound className="h-4 w-4" />Mi perfil</Link></div>
     </>
   )

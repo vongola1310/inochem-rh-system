@@ -42,6 +42,7 @@ function fakeTransaction(requests, initialBalance) {
   let balance = { ...initialBalance }
   let writes = 0
   const tx = {
+    attendanceImport: { updateMany: async () => ({ count: 0 }) },
     request: {
       findUnique: async ({ where }) => {
         const row = requests.find(r => r.id === where.id)
@@ -136,6 +137,7 @@ test('la corrección funciona para distintos empleados y cada operación conserv
     lastYearProcessed: getCycleBounds(employee.entryDate).cycleStart.getUTCFullYear() - employee.entryDate.getUTCFullYear(),
   })]))
   const tx = {
+    attendanceImport: { updateMany: async () => ({ count: 0 }) },
     request: stores.get(employees[0].id).tx.request,
     vacationBalance: {
       findUnique: args => stores.get(args.where.userId).tx.vacationBalance.findUnique(args),
