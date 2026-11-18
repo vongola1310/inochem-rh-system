@@ -4,30 +4,36 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { attendanceActor, actionError, fail } from '@/lib/attendance/access'
 import { asJson, attendanceTransaction, checkVersion, markAttendanceStale } from '@/lib/attendance/service'
-import { calendarDays, parseDate } from '@/lib/attendance/dates'
+import { addDateDays, parseDate } from '@/lib/attendance/dates'
+import { medicalIdentifier } from '@/lib/attendance/medical-identifier'
 
 const leaveSchema = z.object({
-  userId: z.string().min(1).max(100), startDate: z.string(), endDate: z.string(),
-  series: z.string().trim().min(1).max(40), folio: z.string().trim().min(1).max(100),
+  userId: z.string().min(1).max(100), startDate: z.string(),
+  calendarDays: z.coerce.number().int().positive().safe(),
+  seriesFolio: z.string().trim().min(1).max(141),
   kind: z.enum(['MATERNAL', 'GENERAL', 'WORK_RISK']), notes: z.string().trim().max(4000),
 })
 
 export async function saveMedicalLeave(form: FormData) {
   try {
     const actor = await attendanceActor(['HR', 'ADMIN'])
-    const result = leaveSchema.safeParse(Object.fromEntries(['userId', 'startDate', 'endDate', 'series', 'folio', 'kind', 'notes'].map(key => [key, form.get(key) || ''])))
-    if (!result.success) fail('Completa colaborador, fechas, serie, folio y tipo. Las notas admiten hasta 4,000 caracteres.')
+    const result = leaveSchema.safeParse(Object.fromEntries(['userId', 'startDate', 'calendarDays', 'seriesFolio', 'kind', 'notes'].map(key => [key, form.get(key) || ''])))
+    if (!result.success) fail('Completa colaborador, fecha inicial, días corridos (entero mayor a cero), serie y folio, y tipo. Las notas admiten hasta 4,000 caracteres.')
     const data = result.data
-    let days: number, startDate: Date, endDate: Date
-    try { days = calendarDays(data.startDate, data.endDate); startDate = parseDate(data.startDate); endDate = parseDate(data.endDate) }
-    catch (error) { fail((error as Error).message) }
+    const days = data.calendarDays
+    let startDate: Date, endDate: Date
+    try { startDate = parseDate(data.startDate); endDate = parseDate(addDateDays(data.startDate, days - 1)) }
+    catch { fail('Revisa la fecha inicial y los días corridos: deben formar un periodo válido.') }
     const id = String(form.get('id') || '')
     await attendanceTransaction(async tx => {
       if (!await tx.user.findUnique({ where: { id: data.userId }, select: { id: true } })) fail('El colaborador ya no existe.')
       const before = id ? await tx.medicalLeave.findUnique({ where: { id } }) : null
       if (id && (!before || before.cancelledAt || before.userId !== data.userId || before.version !== checkVersion(form.get('version')))) fail('La incapacidad cambió o fue cancelada. Actualiza la página.')
+      const identifiers = await tx.medicalLeave.findMany({ where: { userId: data.userId, id: { not: id || undefined } }, select: { series: true, folio: true } })
+      if (identifiers.some(leave => medicalIdentifier(leave) === data.seriesFolio)) fail('La serie y folio ya están registrados para este colaborador.')
       if (await tx.medicalLeave.count({ where: { userId: data.userId, cancelledAt: null, id: { not: id || undefined }, startDate: { lte: endDate }, endDate: { gte: startDate } } })) fail('Ya existe una incapacidad vigente que se cruza con estas fechas para el colaborador.')
-      const payload = { ...data, startDate, endDate, calendarDays: days, updatedById: actor.id }
+      // El identificador unificado usa folio; los registros anteriores conservan su lectura.
+      const payload = { userId: data.userId, series: '', folio: data.seriesFolio, kind: data.kind, notes: data.notes, startDate, endDate, calendarDays: days, updatedById: actor.id }
       const saved = before
         ? await tx.medicalLeave.update({ where: { id }, data: { ...payload, version: { increment: 1 } } })
         : await tx.medicalLeave.create({ data: { ...payload, createdById: actor.id } })
