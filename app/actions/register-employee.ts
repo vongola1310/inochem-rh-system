@@ -1,13 +1,13 @@
 'use server'
 
-import { PrismaClient, Role } from '@prisma/client'
+import { Role } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { differenceInYears } from 'date-fns'
 import bcrypt from 'bcryptjs'
 import { canManageEmployees } from '@/lib/employee-access'
 
-const prisma = new PrismaClient()
 
 // Esquema de validación CORREGIDO - acepta null, string vacío, o undefined
 const registerSchema = z.object({

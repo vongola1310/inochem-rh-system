@@ -1,11 +1,10 @@
 'use server'
 
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
 import { revalidatePath } from 'next/cache'
 import bcrypt from 'bcryptjs'
 
-const prisma = new PrismaClient()
 
 export async function updatePassword(formData: FormData) {
   const session = await auth()

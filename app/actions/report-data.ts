@@ -1,11 +1,10 @@
 'use server'
 
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import { differenceInYears } from 'date-fns'
 import { formatUTC, formatMXTime, formatMXDate } from '@/lib/format-date'
 import { getCyclePeriod } from '@/lib/vacation-logic'
 
-const prisma = new PrismaClient()
 
 // REPORTE 1: SALDOS GLOBAL / GRUPAL (CON FILTRO DE PERIODO)
 export async function getBalanceReport(

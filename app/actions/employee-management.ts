@@ -1,11 +1,11 @@
 'use server'
 
-import { PrismaClient, Role } from '@prisma/client'
+import { Role } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { canManageEmployees } from '@/lib/employee-access'
 
-const prisma = new PrismaClient()
 
 // 1. ACTUALIZAR DATOS DEL EMPLEADO
 export async function updateEmployee(formData: FormData) {

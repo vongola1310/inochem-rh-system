@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
 import { redirect, notFound } from 'next/navigation'
 import { differenceInMonths } from 'date-fns'
@@ -20,7 +20,6 @@ import Link from 'next/link'
 import { Button } from "@/components/ui/button"
 import { EmployeeManagementPanel } from '@/components/admin/employee-management-panel'
 
-const prisma = new PrismaClient()
 
 // Helper para dibujar los estados con colores exactos (Sincronizado con el resto del sistema)
 const getStatusBadge = (status: string) => {

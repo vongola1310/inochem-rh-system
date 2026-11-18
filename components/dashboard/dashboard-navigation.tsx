@@ -15,6 +15,7 @@ export function DashboardNavigation({ view, isManager, isHR, isAdmin = false, ca
   const links = [
     { label: 'Inicio', href: '/', icon: House, active: view === 'home', count: 0 },
     { label: 'Mis solicitudes', href: '/?view=requests', icon: FileText, active: view === 'requests' || view === 'new', count: 0 },
+    { label: 'Cancelar vacaciones', href: '/vacations/cancellations', icon: CalendarDays, active: false, count: 0 },
     { label: 'Mi asistencia', href: '/attendance', icon: CalendarDays, active: false, count: 0 },
     ...((isHR || isAdmin) ? [{ label: 'Días de jornada corta o reducida', href: '/admin/reduced-workdays', icon: CalendarDays, active: false, count: 0 }] : []),
     ...(canUploadFieldReports ? [{ label: 'Subir reporte de personal de campo', href: '/field-reports', icon: FileText, active: false, count: 0 }] : []),
@@ -25,6 +26,7 @@ export function DashboardNavigation({ view, isManager, isHR, isAdmin = false, ca
   ]
   const adminLinks = [
     { label: 'Panel RH', href: '/admin', icon: Settings2 },
+    { label: 'Cancelaciones de vacaciones', href: '/vacations/cancellations?view=review', icon: CalendarDays },
     { label: 'Usuarios', href: '/admin/users', icon: Users },
     { label: 'Reportes', href: '/admin/reports', icon: ChartNoAxesCombined },
     { label: 'Días festivos', href: '/admin/holidays', icon: CalendarDays },

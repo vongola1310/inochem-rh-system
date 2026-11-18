@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button"
 // Importamos el componente cliente que maneja la lógica visual
 import { ChangePasswordForm } from '@/components/profile/change-password-form'
 
-const prisma = new PrismaClient()
 
 export default async function ProfilePage() {
   const session = await auth()

@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
@@ -12,7 +12,6 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { TeamBalancesTable } from '@/components/team/team-balances-table'
 import { getTeamVacationSummaries } from '@/lib/team-vacations'
 
-const prisma = new PrismaClient()
 
 export default async function TeamHistoryPage() {
   const session = await auth()

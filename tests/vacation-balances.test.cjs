@@ -184,3 +184,49 @@ test('un conflicto concurrente reintenta la transacción serializable; otros err
     await assert.rejects(() => withBalanceTransaction(async () => true), /unexpected/)
   } finally { prisma.$transaction = original }
 })
+
+test('espera la conexión y reintenta P2028 solo antes de iniciar la transacción', async () => {
+  const original=prisma.$transaction
+  let attempts=0, calls=0
+  prisma.$transaction=async(work,options)=>{
+    attempts++;assert.equal(options.maxWait,10000);assert.equal(options.timeout,15000)
+    if(attempts<3)throw new Prisma.PrismaClientKnownRequestError('Transaction API error: Unable to start a transaction in the given time.',{code:'P2028',clientVersion:'5.22.0'})
+    return work({})
+  }
+  try{
+    assert.equal(await withBalanceTransaction(async()=>{calls++;return 'ok'}),'ok')
+    assert.equal(attempts,3);assert.equal(calls,1,'El trabajo solo se ejecuta cuando inicia la transacción')
+    attempts=0
+    prisma.$transaction=async()=>{attempts++;throw new Prisma.PrismaClientKnownRequestError('Unable to start a transaction in the given time.',{code:'P2028',clientVersion:'5.22.0'})}
+    await assert.rejects(()=>withBalanceTransaction(async()=>{}),/Unable to start/);assert.equal(attempts,3,'Reintentos acotados')
+    attempts=0
+    prisma.$transaction=async work=>{attempts++;return work({})}
+    await assert.rejects(()=>withBalanceTransaction(async()=>{throw new Prisma.PrismaClientKnownRequestError('Transaction already closed: expired transaction.',{code:'P2028',clientVersion:'5.22.0'})}),/already closed/)
+    assert.equal(attempts,1,'No repite trabajo ejecutado cuando expira una transacción')
+  }finally{prisma.$transaction=original}
+})
+
+test('entrar con saldo vigente no abre transacción; aniversario pendiente se comprueba dentro de la transacción', async () => {
+  const {checkAndRenewBalance}=require('../lib/check-renewal.ts')
+  const originalFind=prisma.user.findUnique,originalTransaction=prisma.$transaction
+  const current=getCycleBounds(entryDate),years=current.cycleStart.getUTCFullYear()-entryDate.getUTCFullYear()
+  let state={entryDate,balance:{lastYearProcessed:years}},transactions=0,writes=0,reads=0
+  prisma.user.findUnique=async()=>state
+  prisma.$transaction=async work=>{
+    transactions++
+    return work({user:{findUnique:async()=>({entryDate})},vacationBalance:{findUnique:async()=>({lastYearProcessed:years}),update:async()=>{writes++}},request:{findMany:async()=>{reads++;return []}}})
+  }
+  try{
+    assert.equal(await checkAndRenewBalance('u'),false);assert.equal(transactions,0)
+    state=null;assert.equal(await checkAndRenewBalance('u'),false);assert.equal(transactions,0)
+    state={entryDate,balance:null};assert.equal(await checkAndRenewBalance('u'),false);assert.equal(transactions,0)
+    state={entryDate,balance:{lastYearProcessed:years-1}}
+    assert.equal(await checkAndRenewBalance('u'),false,'Otra petición ya renovó al entrar en la transacción')
+    assert.equal(transactions,1);assert.equal(writes,0);assert.equal(reads,0)
+    prisma.$transaction=async work=>{
+      transactions++
+      return work({user:{findUnique:async()=>({entryDate})},vacationBalance:{findUnique:async()=>({lastYearProcessed:years-1}),update:async()=>{writes++}},request:{findMany:async()=>[]}})
+    }
+    assert.equal(await checkAndRenewBalance('u'),true);assert.equal(writes,1)
+  }finally{prisma.user.findUnique=originalFind;prisma.$transaction=originalTransaction}
+})

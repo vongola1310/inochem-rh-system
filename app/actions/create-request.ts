@@ -1,6 +1,7 @@
 'use server'
 
-import { PrismaClient, Prisma, RequestType } from '@prisma/client'
+import { Prisma, RequestType } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { isWeekend, isBefore, startOfDay, differenceInCalendarDays } from 'date-fns'
 import { getDaysByYears } from '@/lib/lft-law'
@@ -12,7 +13,6 @@ import { auth } from '@/auth'
 import { timeSeconds } from '@/lib/attendance/dates'
 import { markAttendanceStale } from '@/lib/attendance/staleness'
 
-const prisma = new PrismaClient()
 
 // Helper para contar días hábiles en un rango
 function countBusinessDays(start: Date, end: Date, holidaysSet: Set<string>, birthDate?: Date | null): number {

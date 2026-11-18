@@ -1,12 +1,11 @@
 // app/actions/notifications.ts
 'use server'
 
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { auth } from '@/auth'
 import { ensureFieldReportReminder } from '@/lib/field-reports/reminders'
 
-const prisma = new PrismaClient()
 
 // 1. Obtener notificaciones no leídas
 export async function getUnreadNotifications(userId: string) {

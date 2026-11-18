@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
 import { RegisterEmployeeForm } from '@/components/admin/register-employee-form'
@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button'
 import { syncAllBalances } from '@/app/actions/sync-balances'
 import Link from 'next/link'
 
-const prisma = new PrismaClient()
 
 export default async function UsersPage() {
   const session = await auth()

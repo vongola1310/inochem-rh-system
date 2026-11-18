@@ -1,4 +1,6 @@
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
+import { attendanceActor } from "@/lib/attendance/access";
+import { todayInMexico, dateKey } from "@/lib/attendance/dates";
 import { notFound } from "next/navigation";
 import { formatUTC, formatMXTime } from "@/lib/format-date";
 import {
@@ -31,10 +33,10 @@ import {
 } from "lucide-react";
 import { DownloadButton } from "@/components/pdf/download-button";
 import Link from "next/link";
-import { auth } from "@/auth";
+
 import { RejectForm } from "@/components/reject-form";
 
-const prisma = new PrismaClient();
+
 
 const TYPE_LABELS: Record<string, string> = {
   VACATION: "Solicitud de Vacaciones",
@@ -82,10 +84,10 @@ export default async function RequestDetailPage({
 }) {
   const { id } = params;
 
-  const session = await auth();
-  const currentUserEmail = session?.user?.email;
-  const currentUserId = session?.user?.id;
-  const currentUserRole = (session?.user as any)?.role;
+  const actor = await attendanceActor().catch(() => null);
+  if (!actor) return notFound();
+  const currentUserId = actor.id;
+  const currentUserRole = actor.role;
 
   // 1. OBTENEMOS INFORMACIÓN COMPLETA
   const request = await prisma.request.findUnique({
@@ -103,6 +105,10 @@ export default async function RequestDetailPage({
   });
 
   if (!request) return notFound();
+  const today = todayInMexico();
+  const boss = request.user.boss;
+  const activeBackup = boss?.backupId === currentUserId && boss.backupStartDate && boss.backupEndDate && today >= dateKey(boss.backupStartDate) && today <= dateKey(boss.backupEndDate);
+  if (request.userId !== currentUserId && request.user.bossId !== currentUserId && !activeBackup && !['HR', 'ADMIN'].includes(currentUserRole)) return notFound();
 
   // 2. Cargamos festivos para desglose
   const allHolidays = await prisma.holiday.findMany();
@@ -113,7 +119,7 @@ export default async function RequestDetailPage({
     }),
   );
 
-  const isOwner = request.user.email === currentUserEmail;
+  const isOwner = request.userId === currentUserId;
   const isVacation = request.type === "VACATION";
 
   // Casting a string para evitar conflictos de tipado si Prisma Client no está actualizado al 100%
@@ -136,11 +142,11 @@ export default async function RequestDetailPage({
 
   // --- LÓGICA DE PERMISOS PARA BOTONES (Quién ve qué) ---
   const isRequesterBoss = request.user.bossId === currentUserId;
-  const isBossBackup = request.user.boss?.backupId === currentUserId;
+  const isBossBackup = !!activeBackup;
   const isHR = currentUserRole === "HR";
 
   // Definimos si el usuario actual tiene permiso administrativo general sobre esta solicitud
-  const isBossOrHR = isRequesterBoss || isBossBackup || isHR;
+  const isBossOrHR = isHR;
 
   // Variable Maestra: ¿Debo ver los botones de Aprobar/Rechazar?
   let showApprovalButtons = false;
@@ -467,7 +473,8 @@ export default async function RequestDetailPage({
 
           <CardFooter className="flex flex-col gap-3 border-t border-slate-100 p-6 bg-slate-50/30">
             {/* 1. ACCIONES PARA EL DUEÑO (CANCELAR) - CORREGIDO */}
-            {isOwner &&
+            {isOwner && isVacation && ['PENDING_BOSS', 'PENDING_HR', 'APPROVED', 'CANCELLATION_REQUESTED'].includes(currentStatus) && <Link href={`/vacations/cancellations?state=all&request=${request.id}`} className="w-full rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-center text-sm font-semibold text-red-700">{isCancellationRequested ? 'Ver seguimiento de cancelación' : 'Gestionar cancelación de vacaciones'}</Link>}
+            {isOwner && !isVacation &&
               currentStatus !== "CANCELLED" &&
               currentStatus !== "REJECTED" &&
               currentStatus !== "CANCELLATION_REQUESTED" && (
@@ -521,7 +528,8 @@ export default async function RequestDetailPage({
               </div>
             )}
             {/* 3. APROBACIÓN DE CANCELACIÓN (SOLO SI TE TOCA) - CORREGIDO */}
-            {isBossOrHR && isCancellationRequested && (
+            {isHR && isVacation && isCancellationRequested && <Link href={`/vacations/cancellations?view=review&request=${request.id}`} className="w-full rounded-xl bg-orange-50 px-4 py-3 text-center text-sm font-semibold text-orange-900">Revisar petición de cancelación</Link>}
+            {isBossOrHR && !isVacation && isCancellationRequested && (
               <div className="w-full bg-orange-50 p-5 rounded-xl border border-orange-200 text-center shadow-sm">
                 <div className="flex justify-center mb-3">
                   <div className="bg-orange-100 p-2 rounded-full">

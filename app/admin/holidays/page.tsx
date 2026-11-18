@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
 import { format } from 'date-fns'
@@ -16,7 +16,6 @@ import { canManageEmployees } from '@/lib/employee-access'
 import { attendanceTransaction, markAttendanceStale } from '@/lib/attendance/service'
 import { dateKey, parseDate } from '@/lib/attendance/dates'
 
-const prisma = new PrismaClient()
 
 async function addHoliday(formData: FormData) {
   'use server'

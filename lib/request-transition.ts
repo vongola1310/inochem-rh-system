@@ -14,6 +14,7 @@ export async function transitionRequest(
   nextStatus: RequestStatus,
   data: TransitionData = {},
   observationSuffix?: string,
+  notifications?: Prisma.NotificationCreateManyInput[],
 ) {
   return withBalanceTransaction(async tx => {
     const request = await tx.request.findUnique({
@@ -46,6 +47,7 @@ export async function transitionRequest(
         data: { pendingDays, ...(usedDelta ? { usedDays: { increment: usedDelta } } : {}), lastUpdated: asOf },
       })
     }
+    if (notifications?.length) await tx.notification.createMany({ data: notifications })
     return true
   })
 }

@@ -1,11 +1,10 @@
 'use server'
 
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { isWeekend, addDays, startOfDay, isBefore } from 'date-fns'
 import { transitionRequest } from '@/lib/request-transition'
 
-const prisma = new PrismaClient()
 
 // Helper para sumar días hábiles a una fecha
 function addBusinessDays(startDate: Date, days: number, holidaySet: Set<string>): Date {

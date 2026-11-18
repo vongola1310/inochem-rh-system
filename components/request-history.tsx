@@ -108,6 +108,7 @@ export async function RequestHistory({
               Gestionar mis solicitudes
             </h2>
             <p className="mt-1 text-xs text-slate-500">Tus vacaciones y permisos, del más reciente al más antiguo.</p>
+            <Link href="/vacations/cancellations" className="mt-3 inline-block text-sm font-medium text-[#3e712c] underline underline-offset-4">Cancelar vacaciones solicitadas</Link>
           </div>
           <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">{totalRequests}</span>
         </div>

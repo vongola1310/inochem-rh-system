@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
@@ -14,7 +14,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { EmployeesTable } from '@/components/admin/employees-table'
 import { formatUTC, formatMXTime } from '@/lib/format-date'
 
-const prisma = new PrismaClient()
 
 export default async function AdminDashboard() {
   const session = await auth()
@@ -90,6 +89,8 @@ export default async function AdminDashboard() {
             </Button>
         </form>
       </div>
+
+      <Link href="/vacations/cancellations?view=review" className="mb-6 inline-flex rounded-lg border border-orange-200 bg-orange-50 px-4 py-3 text-sm font-semibold text-orange-900">Revisar cancelaciones de vacaciones</Link>
 
       {/* HEADER */}
       <div className="mb-8">
