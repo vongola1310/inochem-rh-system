@@ -3,44 +3,20 @@
 import { Prisma, RequestType } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
-import { isWeekend, isBefore, startOfDay, differenceInCalendarDays } from 'date-fns'
+import { isBefore } from 'date-fns'
+import { vacationBreakdown, validateRequestDates } from '@/lib/request-dates'
 import { getDaysByYears } from '@/lib/lft-law'
 import { checkAndRenewBalance } from '@/lib/check-renewal'
 import { getCycleBounds } from '@/lib/vacation-cycle'
 import { calculateVacationUsage } from '@/lib/vacation-usage'
 import { withBalanceTransaction, renewBalanceInTransaction } from '@/lib/vacation-balance'
 import { auth } from '@/auth'
-import { timeSeconds } from '@/lib/attendance/dates'
+import { timeSeconds, parseDate, dateKey, todayInMexico } from '@/lib/attendance/dates'
 import { markAttendanceStale } from '@/lib/attendance/staleness'
 
 
-// Helper para contar días hábiles en un rango
-function countBusinessDays(start: Date, end: Date, holidaysSet: Set<string>, birthDate?: Date | null): number {
-    let count = 0;
-    let current = new Date(start);
-    current.setHours(0,0,0,0);
-    const endDay = new Date(end);
-    endDay.setHours(0,0,0,0);
-
-    while (current < endDay) {
-        const dateStr = current.toISOString().split('T')[0];
-        const isWknd = isWeekend(current);
-        const isHoliday = holidaysSet.has(dateStr);
-        
-        let isBirthday = false;
-        if (birthDate) {
-            const bdate = new Date(birthDate);
-            const birthMMDD = `${String(bdate.getUTCMonth() + 1).padStart(2, '0')}-${String(bdate.getUTCDate()).padStart(2, '0')}`;
-            const currentMMDD = `${String(current.getMonth() + 1).padStart(2, '0')}-${String(current.getDate()).padStart(2, '0')}`;
-            if (birthMMDD === currentMMDD) isBirthday = true;
-        }
-
-        if (!isWknd && !isHoliday && !isBirthday) {
-            count++;
-        }
-        current.setDate(current.getDate() + 1);
-    }
-    return count;
+function countBusinessDays(start: Date, end: Date, holidays: Set<string>, birthDate?: Date | null): number {
+  return vacationBreakdown(dateKey(start), dateKey(end), holidays, birthDate).business
 }
 
 export async function createRequest(prevState: any, formData: FormData) {
@@ -50,13 +26,11 @@ export async function createRequest(prevState: any, formData: FormData) {
     const session = await auth()
     if (!session?.user?.id || session.user.id !== userId) return { success: false, message: 'Solo puedes crear solicitudes para tu propia cuenta.' }
     if (!Object.values(RequestType).includes(type)) return { success: false, message: 'Tipo de solicitud inválido.' }
-    const startDateRaw = new Date(formData.get('startDate') as string)
-    const returnDateRaw = formData.get('returnDate') 
-        ? new Date(formData.get('returnDate') as string) 
-        : new Date(formData.get('startDate') as string) 
-    
-    const startDate = startOfDay(startDateRaw)
-    const returnDate = startOfDay(returnDateRaw)
+    let startDate: Date, returnDate: Date
+    try {
+      startDate = parseDate(String(formData.get('startDate') || ''))
+      returnDate = formData.get('returnDate') ? parseDate(String(formData.get('returnDate'))) : startDate
+    } catch { return { success: false, message: 'Revisa las fechas de la solicitud.' } }
 
     const permitTime = formData.get('permitTime') as string || null
     const observations = formData.get('observations') as string
@@ -77,12 +51,12 @@ export async function createRequest(prevState: any, formData: FormData) {
     }
 
     // --- CÁLCULOS DE FECHAS CLAVE ---
-    const today = startOfDay(new Date());
+    const today = parseDate(todayInMexico());
     const entryDate = new Date(user.entryDate);
     const { cycleEnd: anniversaryThisYear } = getCycleBounds(entryDate);
 
     // DETECCIÓN DE "ZONA DE PELIGRO" (Faltan 15 días o menos para el aniversario)
-    const daysToAnniversary = differenceInCalendarDays(anniversaryThisYear, today);
+    const daysToAnniversary = (anniversaryThisYear.getTime() - today.getTime()) / 86400000;
     const isDangerZone = type === 'VACATION' && daysToAnniversary >= 0 && daysToAnniversary <= 15;
 
     // DETECCIÓN DE CRUCE DE ANIVERSARIO
@@ -94,7 +68,9 @@ export async function createRequest(prevState: any, formData: FormData) {
     }
 
     const holidays = await prisma.holiday.findMany();
-    const holidaySet = new Set(holidays.map(h => h.date.toISOString().split('T')[0]));
+    const holidaySet = new Set(holidays.map(h => dateKey(h.date)));
+    const dateError = validateRequestDates(type, dateKey(startDate), dateKey(returnDate), holidaySet, user.birthDate)
+    if (dateError) return { success: false, message: dateError }
 
     // --- LÓGICA DE PROCESAMIENTO ---
     

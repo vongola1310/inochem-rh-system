@@ -1,12 +1,10 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
-import { format, setYear, isWeekend } from 'date-fns'
-import { es } from 'date-fns/locale'
-import { CalendarIcon, Clock, FileText, Send, Cake, Lock, AlertTriangle, XCircle } from 'lucide-react'
+import { useState, useMemo } from 'react'
+import { Clock, FileText, Send, Cake, XCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Calendar } from '@/components/ui/calendar'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { RequestDatePicker } from './request-date-picker'
+import { calendarDate, calendarKey, birthdayPermission, validateRequestDates } from '@/lib/request-dates'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
@@ -35,94 +33,44 @@ export function PermitRequestForm({
   const [observation, setObservation] = useState("") 
   const [loading, setLoading] = useState(false)
   
-  // Estados de validación
-  const [dateMessage, setDateMessage] = useState<string | null>(null)
-  const [isBlocked, setIsBlocked] = useState(false) // Nuevo estado para bloquear el envío
-
-  // 1. Calcular días deshabilitados (Visual para el calendario manual)
-  const isDateDisabled = useMemo(() => {
-    const holidayDates = new Set(
-      holidays.map(h => {
-        const date = new Date(h.date)
-        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
-      })
-    )
-    
-    return (date: Date) => {
-      const dayOfWeek = date.getDay()
-      const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
-      return dayOfWeek === 0 || dayOfWeek === 6 || holidayDates.has(dateStr)
-    }
-  }, [holidays])
-
-  // 2. Lógica Automática de Cumpleaños (POLÍTICA ESTRICTA CON BLOQUEO)
-  useEffect(() => {
-    if (type === 'PERMIT_BIRTHDAY') {
-        setObservation("Día libre por Cumpleaños 🎉")
-        setDateMessage(null)
-        setIsBlocked(false) // Reiniciamos el bloqueo
-        
-        if (userBirthDate) {
-            const today = new Date();
-            const birthDateObj = new Date(userBirthDate);
-            
-            // Calculamos cumpleaños exacto de este año
-            const targetDate = setYear(birthDateObj, today.getFullYear());
-            
-            // Verificamos si es inhábil (Fines de semana o Festivos)
-            const isHolidayDate = (d: Date) => {
-                const dStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-                return holidays.some(h => h.date.startsWith(dStr));
-            }
-
-            if (isWeekend(targetDate) || isHolidayDate(targetDate)) {
-                // ACTIVAMOS EL BLOQUEO
-                setDateMessage("Tu cumpleaños cae en día inhábil (Fin de semana o Festivo). Por política de la empresa, el día libre no es transferible.");
-                setIsBlocked(true);
-            }
-
-            setDate(targetDate);
-        } else {
-            toast.info("No tenemos tu fecha de nacimiento registrada", {
-                description: "Por favor contacta a RH."
-            })
-        }
-
-    } else if (observation === "Día libre por Cumpleaños 🎉") {
-        // Si cambia de tipo a otro permiso, limpiamos todo
-        setObservation("")
-        setDate(undefined) 
-        setDateMessage(null)
-        setIsBlocked(false)
-    }
-  }, [type, userBirthDate, holidays])
-
-  async function handleSubmit(formData: FormData) {
-    if (isBlocked) return; // Doble seguridad
-
-    setLoading(true)
-    
-    if (date) formData.set('startDate', date.toISOString())
-    formData.set('userId', userId)
-    formData.set('observations', observation)
-
-    const result = await createRequest(null, formData)
-    setLoading(false)
-    
-    if (result.success) {
-      toast.success("Permiso Enviado", { description: result.message })
-      setDate(undefined)
-      setType("PERMIT_LATE")
-      setObservation("")
-      setDateMessage(null)
-      setIsBlocked(false)
-      onSuccess?.()
-    } else {
-      toast.error("Error", { description: result.message })
-    }
+  const holidaySet = useMemo(() => new Set(holidays.map(h => h.date.slice(0, 10))), [holidays])
+  const birthday = birthdayPermission(userBirthDate, holidaySet)
+  const isBirthdayMode = type === 'PERMIT_BIRTHDAY'
+  const selectedDate = isBirthdayMode ? (birthday.key ? calendarDate(birthday.key) : undefined) : date
+  const dateMessage = isBirthdayMode ? birthday.error : null
+  const validationError = selectedDate ? validateRequestDates(type, calendarKey(selectedDate), calendarKey(selectedDate), holidaySet, userBirthDate) : null
+  const isBlocked = Boolean(dateMessage || validationError)
+  function changeType(next: string) {
+    if (next === 'PERMIT_BIRTHDAY') setObservation('Día libre por Cumpleaños 🎉')
+    else if (isBirthdayMode) setObservation('')
+    setType(next)
   }
 
-  const isBirthdayMode = type === 'PERMIT_BIRTHDAY';
+  async function handleSubmit(formData: FormData) {
+    if (loading || isBlocked || !selectedDate) return
+
+    setLoading(true)
+    try {
+    
+      formData.set('startDate', calendarKey(selectedDate))
+      formData.set('type', type)
+      formData.set('userId', userId)
+      formData.set('observations', observation)
+
+      const result = await createRequest(null, formData)
+    
+      if (result.success) {
+        toast.success("Permiso Enviado", { description: result.message })
+        setDate(undefined)
+        setType("PERMIT_LATE")
+        setObservation("")
+        onSuccess?.()
+      } else {
+        toast.error("Error", { description: result.message })
+      }
+    } catch { toast.error("No se pudo enviar. Intenta nuevamente; conservamos tus datos.") }
+    finally { setLoading(false) }
+  }
 
   return (
     <form action={handleSubmit} className="space-y-6">
@@ -137,8 +85,8 @@ export function PermitRequestForm({
       </div>
       
       <div className="space-y-2">
-        <Label className="text-slate-700 font-medium">Tipo de Incidencia</Label>
-        <Select name="type" onValueChange={setType} value={type}>
+        <Label className="text-slate-700 font-medium">Tipo de permiso</Label>
+        <Select name="type" onValueChange={changeType} disabled={loading} value={type}>
           <SelectTrigger className="border-slate-300 focus:border-[#73C056] focus:ring-[#73C056] transition-colors">
             <SelectValue placeholder="Selecciona..." />
           </SelectTrigger>
@@ -154,33 +102,9 @@ export function PermitRequestForm({
       </div>
 
       <div className="flex flex-col space-y-2">
-        <Label className="text-slate-700 font-medium">Fecha del Permiso</Label>
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button 
-              variant="outline" 
-              disabled={isBirthdayMode}
-              className={`h-auto min-h-11 w-full justify-start whitespace-normal text-left font-normal border-slate-300 ${!date && "text-muted-foreground"} ${isBirthdayMode ? "bg-slate-100 opacity-100 cursor-not-allowed" : "hover:border-[#527346]"}`}
-            >
-              {isBirthdayMode ? <Lock className="mr-2 h-4 w-4 text-slate-400" /> : <CalendarIcon className="mr-2 h-4 w-4 text-[#73C056]" />}
-              {date ? format(date, "PPP", { locale: es }) : <span>Selecciona la fecha</span>}
-            </Button>
-          </PopoverTrigger>
-          {!isBirthdayMode && (
-            <PopoverContent className="w-auto p-0" align="start">
-                <Calendar 
-                mode="single" 
-                selected={date} 
-                onSelect={setDate} 
-                initialFocus
-                locale={es}
-                className="rounded-md border"
-                disabled={isDateDisabled}
-                />
-            </PopoverContent>
-          )}
-        </Popover>
-        
+        <RequestDatePicker label="Fecha del permiso" value={selectedDate} onChange={setDate} holidays={holidays} disabled={loading || isBirthdayMode} hint={isBirthdayMode ? 'Se utiliza tu fecha de nacimiento registrada.' : 'Selecciona el día hábil en que necesitas el permiso.'} />
+        {!isBirthdayMode && validationError && <p role="alert" className="text-sm text-red-700">{validationError}</p>}
+
         {isBirthdayMode && !dateMessage && (
             <p className="text-xs text-pink-600 flex items-center gap-1 animate-in fade-in">
                 <Cake className="h-3 w-3" /> ¡Feliz cumpleaños! La fecha se asigna automáticamente.
@@ -207,10 +131,10 @@ export function PermitRequestForm({
       )}
 
       <div className="flex flex-col space-y-2">
-        <Label htmlFor="obs" className="text-slate-700 font-medium">Motivo</Label>
+        <Label htmlFor="permit-observations" className="text-slate-700 font-medium">Motivo</Label>
         <Textarea 
           name="observations" 
-          id="obs" 
+          id="permit-observations"
           placeholder="Ej: Cita médica..." 
           required 
           rows={4}
@@ -226,7 +150,7 @@ export function PermitRequestForm({
         type="submit" 
         className="h-11 w-full bg-[#3e712c] hover:bg-[#315a23] text-white font-semibold shadow-none disabled:opacity-50 disabled:cursor-not-allowed"
         // Agregamos la condición isBlocked
-        disabled={loading || !date || isBlocked}
+        disabled={loading || !selectedDate || isBlocked}
       >
         {loading ? (
           <>
@@ -236,7 +160,7 @@ export function PermitRequestForm({
         ) : (
           <>
             <Send className="mr-2 h-4 w-4" />
-            {isBlocked ? "No Aplica (Día Inhábil)" : "Enviar Solicitud"}
+            {isBlocked ? "Revisa la fecha del permiso" : "Enviar Solicitud"}
           </>
         )}
       </Button>
