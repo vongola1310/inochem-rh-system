@@ -27,6 +27,7 @@ export async function updateEmployee(formData: FormData) {
     role: formData.get('role') as Role,
     // NUEVO CAMPO
     birthDate: birthDateObj,
+    isRemote: formData.get('isRemote') === 'on',
   }
 
   // Capturamos los valores de vacaciones
@@ -52,6 +53,7 @@ export async function updateEmployee(formData: FormData) {
 
     revalidatePath(`/admin/employees/${id}`)
     revalidatePath('/admin/users')
+    revalidatePath('/')
     return { success: true, message: "Datos actualizados correctamente" }
   } catch (error) {
     console.error(error)

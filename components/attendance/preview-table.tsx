@@ -13,7 +13,7 @@ export function AttendancePreviewTable({ days, employees, period }: { days: Eval
     manager: day.managerId ? people.get(day.managerId) || { name: 'Responsable del dictamen' } : null,
     ...initialReviewState(day),
     justification: null, managerComment: null, fieldWork: day.evidence.fieldWork || [], workSummary: day.evidence.workSummary,
-    reviewNotApplicable: isReviewNotApplicable(day.evidence), punches: day.evidence.punches,
+    reviewNotApplicable: isReviewNotApplicable(day.evidence), punches: day.evidence.punches, remotePunches: day.evidence.remotePunches,
   })), [days, people])
   return <AttendanceLeaderList days={displayDays} preview period={period} />
 }

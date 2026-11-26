@@ -1,4 +1,4 @@
-import type { FieldService, FieldWorkEvidence, Punch } from './types'
+import type { FieldService, FieldWorkEvidence, Punch, RemoteClockPunch } from './types'
 import type { Workday } from './workday'
 
 export function fieldHours(rows: FieldWorkEvidence[]) {
@@ -20,9 +20,9 @@ export function durationLabel(seconds: number) {
   return Math.floor(minutes / 60) + ' h ' + String(minutes % 60).padStart(2, '0') + ' min'
 }
 
-export type WorkSummary = { fieldSeconds: number; officeSeconds: number; workedSeconds: number; officeIntervals: { startSeconds: number; endSeconds: number }[]; uncertainOffice: boolean; fieldConflict: boolean }
-export function workedTime(rows: FieldWorkEvidence[], punches: Punch[], workday: Workday): WorkSummary {
-  const field = fieldHours(rows), times = [...new Set(punches.map(punch => punch.seconds))].sort((a, b) => a - b)
+export type WorkSummary = { fieldSeconds: number; officeSeconds: number; workedSeconds: number; officeIntervals: { startSeconds: number; endSeconds: number }[]; uncertainOffice: boolean; fieldConflict: boolean; includesRemote?: boolean }
+export function workedTime(rows: FieldWorkEvidence[], punches: Punch[], workday: Workday, remotePunches: RemoteClockPunch[] = []): WorkSummary {
+  const field = fieldHours(rows), times = [...new Set([...punches, ...remotePunches].map(punch => punch.seconds))].sort((a, b) => a - b)
   const officeIntervals: WorkSummary['officeIntervals'] = []
   const uncertainOffice = times.length > 2 && times.length % 2 !== 0
   // Con una cantidad impar no se atribuye presencia a tramos sin pareja.
@@ -36,5 +36,5 @@ export function workedTime(rows: FieldWorkEvidence[], punches: Punch[], workday:
   }
   const officeSeconds = officeIntervals.reduce((sum, interval) => sum + interval.endSeconds - interval.startSeconds, 0)
   const fieldConflict = field.conflict || field.services.some((a, index) => field.services.slice(index + 1).some(b => a.workedSeconds > 0 && b.workedSeconds > 0 && Math.max(a.startSeconds, b.startSeconds) < Math.min(a.endSeconds, b.endSeconds)))
-  return { fieldSeconds: field.seconds, officeSeconds, workedSeconds: field.seconds + officeSeconds, officeIntervals, uncertainOffice, fieldConflict }
+  return { fieldSeconds: field.seconds, officeSeconds, workedSeconds: field.seconds + officeSeconds, officeIntervals, uncertainOffice, fieldConflict, ...(remotePunches.length ? { includesRemote: true } : {}) }
 }

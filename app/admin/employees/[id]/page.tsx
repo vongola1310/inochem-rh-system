@@ -78,7 +78,7 @@ export default async function EmployeeDetailPage({ params }: { params: { id: str
     where: { id },
     select: {
       id: true, name: true, email: true, employeeNumber: true, jobTitle: true,
-      entryDate: true, birthDate: true, bossId: true, role: true, isBlacklisted: true,
+      entryDate: true, birthDate: true, bossId: true, role: true, isBlacklisted: true, isRemote: true,
       balance: true,
       boss: { select: { name: true, jobTitle: true } },
       requests: { 

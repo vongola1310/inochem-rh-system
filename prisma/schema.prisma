@@ -25,6 +25,8 @@ model User {
   isBlacklisted   Boolean          @default(false)
   blacklistedAt   DateTime?
   canUploadFieldReports Boolean @default(false)
+  isRemote        Boolean @default(false)
+  remotePunches   RemotePunch[]
   fieldReports    FieldReport[]
   fieldReportDays FieldReportDay[]
   fieldReportSchedule FieldReportSchedule?
@@ -298,4 +300,17 @@ model ReducedWorkday {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   @@index([startDate, endDate])
+}
+
+model RemotePunch {
+  id         String @id @default(cuid())
+  userId     String
+  user       User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  date       DateTime @db.Date
+  kind       String
+  recordedAt DateTime @default(now())
+  seconds    Int
+  photo      Bytes
+  @@unique([userId, date, kind])
+  @@index([date, userId])
 }

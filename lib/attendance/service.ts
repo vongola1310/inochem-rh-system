@@ -31,7 +31,7 @@ function orderedJson(value: unknown): unknown {
 export const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(orderedJson(JSON.parse(JSON.stringify(value))))).digest('hex')
 
 export async function attendanceContext(tx: Prisma.TransactionClient, start: string, end: string, config?: ImportConfiguration, sources: SourceFile[] = []) {
-  const [employees, requests, leaves, holidays, fieldReports, schedules] = await Promise.all([
+  const [employees, requests, leaves, holidays, fieldReports, schedules, remoteRecords] = await Promise.all([
     tx.user.findMany({ select: { id: true, employeeNumber: true, name: true, entryDate: true, bossId: true, isBlacklisted: true }, orderBy: { id: 'asc' } }),
     tx.request.findMany({ where: { startDate: { lt: parseDate(addDateDays(end, 1)) }, OR: [
       { returnDate: { gte: parseDate(start) } }, { endDate: { gte: parseDate(start) } }, { startDate: { gte: parseDate(start) } },
@@ -41,6 +41,7 @@ export async function attendanceContext(tx: Prisma.TransactionClient, start: str
     tx.holiday.findMany({ where: { date: { gte: parseDate(start), lt: parseDate(addDateDays(end, 1)) } }, select: { date: true }, orderBy: { date: 'asc' } }),
     tx.fieldReport.findMany({ where: { status: 'CONFIRMED', startDate: { lte: parseDate(end) }, endDate: { gte: parseDate(start) } }, select: { id: true, startDate: true, endDate: true, source: true, mappings: true }, orderBy: { id: 'asc' } }),
     tx.reducedWorkday.findMany({ where: { cancelledAt: null, startDate: { lte: parseDate(end) }, endDate: { gte: parseDate(start) } }, orderBy: { id: 'asc' } }),
+    tx.remotePunch.findMany({ where: { date: { gte: parseDate(start), lte: parseDate(end) } }, select: { id: true, userId: true, date: true, kind: true, seconds: true, recordedAt: true }, orderBy: [{ date: 'asc' }, { userId: 'asc' }, { kind: 'asc' }] }),
   ])
   const fieldWork: FieldWorkEvidence[] = [], fieldErrors: string[] = [], fieldWarnings: string[] = []
   const fieldReferences: { id: string; fileName: string }[] = []
@@ -55,7 +56,7 @@ export async function attendanceContext(tx: Prisma.TransactionClient, start: str
     fieldErrors.push(...preview.errors.map(error => source.fileName + ': ' + error))
     if (preview.omitted.length) fieldWarnings.push(source.fileName + ': ' + preview.omitted.length + ' registros de campo no aplican al cruce de este periodo (fechas, horarios incompletos o exclusiones). Se conservan en la referencia.')
   }
-  return { employees, requests, leaves, holidays: holidays.map(h => dateKey(h.date)), fieldWork, fieldErrors, fieldWarnings, fieldReferences, schedules }
+  return { employees, requests, leaves, holidays: holidays.map(h => dateKey(h.date)), fieldWork, fieldErrors, fieldWarnings, fieldReferences, schedules, remotePunches: remoteRecords.map(p => ({ ...p, date: dateKey(p.date), recordedAt: p.recordedAt.toISOString() })) }
 }
 
 export async function evaluateImport(tx: Prisma.TransactionClient, batch: { startDate: Date; endDate: Date; sources: unknown; configuration: unknown }) {

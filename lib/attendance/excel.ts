@@ -2,7 +2,7 @@ import * as XLSX from 'xlsx'
 import type { attendanceReport } from './report'
 import type { SourceFile } from './types'
 import { DECISION_LABELS, ISSUE_LABELS, REVIEW_LABELS } from './types'
-import { getFieldWork, getWorkSummary } from './field-evidence'
+import { getFieldWork, getWorkSummary, getRemotePunches } from './field-evidence'
 import { dateKey, displayTime } from './dates'
 import { isReviewNotApplicable, NOT_APPLICABLE_LABEL } from './review-policy'
 
@@ -42,12 +42,14 @@ export function buildAttendanceWorkbook(report: Awaited<ReturnType<typeof attend
     'Notas de evaluación': day.systemNotes.join(' · '),
     'Servicios Salesforce': getFieldWork(day.evidence).flatMap(row => row.appointments).join(' · '),
     'Horarios Salesforce (referencia)': getFieldWork(day.evidence).map(row => (row.entrySeconds === null ? 'Desde fecha anterior' : displayTime(row.entrySeconds)) + ' / ' + (row.exitSeconds === null ? 'Continúa en otra fecha' : displayTime(row.exitSeconds))).join(' · '),
+    'Checadas remotas (hora CDMX)': getRemotePunches(day.evidence).map(p => (p.kind === 'ENTRY' ? 'Entrada ' : 'Salida ') + displayTime(p.seconds)).join(' · '),
+    'Evidencia remota (IDs)': getRemotePunches(day.evidence).map(p => p.id).join(' · '),
     'Reportes de campo': getFieldWork(day.evidence).map(row => row.reportId).join(' · '),
     'Horas de campo': (getWorkSummary(day.evidence)?.fieldSeconds || 0) / 3600,
-    'Horas en oficina sin superposición': (getWorkSummary(day.evidence)?.officeSeconds || 0) / 3600,
+    'Horas en oficina / remoto sin superposición': (getWorkSummary(day.evidence)?.officeSeconds || 0) / 3600,
     'Horas combinadas': (getWorkSummary(day.evidence)?.workedSeconds || 0) / 3600,
     'Dónde estuvo (cuenta / lugar)': [...new Set(getFieldWork(day.evidence).flatMap(row => (row.services || []).map(service => service.account || 'Sin cuenta informada')))].join(' · '),
-    'Tramos de oficina': (getWorkSummary(day.evidence)?.officeIntervals || []).map(interval => displayTime(interval.startSeconds) + '–' + displayTime(interval.endSeconds)).join(' · '),
+    'Tramos de oficina / remoto': (getWorkSummary(day.evidence)?.officeIntervals || []).map(interval => displayTime(interval.startSeconds) + '–' + displayTime(interval.endSeconds)).join(' · '),
   }))
   const sources = (report.batch.sources as unknown as SourceFile[]).map(source => ({
     'Sede': source.site, 'Archivo': source.name, 'SHA-256': source.digest,

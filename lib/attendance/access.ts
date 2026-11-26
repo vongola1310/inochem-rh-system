@@ -7,7 +7,7 @@ export function fail(message: string): never { throw new AttendanceError(message
 export async function attendanceActor(roles?: string[]) {
   const session = await auth()
   if (!session?.user?.id) fail('Inicia sesión para continuar.')
-  const actor = await prisma.user.findUnique({ where: { id: session.user.id }, select: { id: true, name: true, role: true, isBlacklisted: true } })
+  const actor = await prisma.user.findUnique({ where: { id: session.user.id }, select: { id: true, name: true, role: true, isBlacklisted: true, canUploadFieldReports: true } })
   if (!actor || actor.isBlacklisted || (roles && !roles.includes(actor.role))) fail('No tienes permiso para realizar esta operación.')
   return actor
 }

@@ -1,6 +1,7 @@
 export type Site = 'AJUSCO' | 'PERIFERICO'
 export type Punch = { externalId: string; name: string; date: string; seconds: number; row: number; site: Site }
 export type SourceFile = { site: Site; name: string; digest: string; rowCount: number; duplicateCount: number; people: { externalId: string; name: string }[]; punches: Punch[]; warnings: string[] }
+export type RemoteClockPunch = { id: string; userId: string; date: string; kind: string; seconds: number; recordedAt: string }
 export type Employee = { id: string; employeeNumber: string; name: string; entryDate: Date | string; bossId: string | null; isBlacklisted?: boolean }
 export type CoverageRequest = { id: string; userId: string; type: string; status: string; approvedByBoss: boolean; startDate: Date | string; returnDate: Date | string | null; endDate: Date | string | null; permitTime: string | null }
 export type Leave = { id: string; userId: string; startDate: Date | string; endDate: Date | string; cancelledAt: Date | string | null }
@@ -17,7 +18,7 @@ export type Evaluation = {
   userId: string; date: string; managerId: string | null
   entrySeconds: number | null; exitSeconds: number | null; exitEstimated: boolean; lateMinutes: number
   detectedIssues: string[]; coverage: string[]; systemNotes: string[]
-  evidence: { punches: Punch[]; requestIds: string[]; leaveIds: string[]; reviewNotApplicable?: true; fieldWork?: FieldWorkEvidence[]; workday?: import('./workday').Workday; workSummary?: import('./field-hours').WorkSummary }
+  evidence: { punches: Punch[]; requestIds: string[]; leaveIds: string[]; reviewNotApplicable?: true; fieldWork?: FieldWorkEvidence[]; workday?: import('./workday').Workday; workSummary?: import('./field-hours').WorkSummary; remotePunches?: RemoteClockPunch[] }
 }
 export type Preview = {
   period?: { start: string; end: string; businessDays: number }
@@ -27,7 +28,7 @@ export type Preview = {
   warnings: string[]
   identities: { key: string; site: Site; externalId: string; name: string; userId: string | null; excluded: boolean }[]
 }
-export const RULES_VERSION = '2026-10-29-v2'
+export const RULES_VERSION = '2026-11-26-remote-v1'
 export const ISSUE_LABELS: Record<string, string> = {
   ABSENCE: 'Falta', LATE: 'Retardo', EARLY_EXIT: 'Salida anticipada',
   MISSING_ENTRY: 'Sin registro de entrada', MISSING_EXIT: 'Sin registro de salida', PERMISSION_REVIEW: 'Revisar horario del permiso',

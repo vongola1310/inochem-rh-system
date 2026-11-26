@@ -37,6 +37,7 @@ import {
 
 type EmployeeData = {
   isBlacklisted: boolean;
+  isRemote: boolean;
   id: string;
   name: string;
   email: string;
@@ -88,6 +89,7 @@ export function EmployeeManagementPanel({ employee, bosses }: { employee: Employ
       <EmployeeBlacklistButton employee={employee} />
       {employee.isBlacklisted && <span className="rounded-full bg-slate-800 px-3 py-1 text-xs text-white">Lista negra</span>}
       
+      {employee.isRemote && <span className="rounded-full bg-green-100 px-3 py-1 text-xs text-green-900">Remoto · checador virtual</span>}
       {/* BOTÓN EDITAR */}
       <Dialog open={isEditing} onOpenChange={setIsEditing}>
         <DialogTrigger asChild>
@@ -109,6 +111,10 @@ export function EmployeeManagementPanel({ employee, bosses }: { employee: Employ
           <form action={handleUpdate} className="grid gap-6 py-4">
             <input type="hidden" name="id" value={employee.id} />
             
+            <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-green-200 bg-green-50 p-4">
+              <input type="checkbox" name="isRemote" defaultChecked={employee.isRemote} className="mt-1 h-4 w-4 shrink-0" />
+              <span><span className="block text-sm font-semibold text-green-950">Colaborador remoto / foráneo</span><span className="mt-1 block text-xs leading-relaxed text-green-900">Habilita el checador con foto de entrada y salida en su inicio. Sus registros se integran al periodo de incidencias. Desactivarlo conserva el historial.</span></span>
+            </label>
             {/* SECCIÓN 1: DATOS PERSONALES */}
             <div className="space-y-4">
                 <h4 className="font-medium text-sm text-slate-500 border-b pb-1">Datos Personales</h4>

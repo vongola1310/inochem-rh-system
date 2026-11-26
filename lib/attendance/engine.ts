@@ -1,5 +1,5 @@
 import { addDateDays, dateKey, datesBetween, isWorkday, timeSeconds } from './dates'
-import type { CoverageRequest, Employee, Evaluation, ImportConfiguration, Leave, Preview, Punch, SourceFile, FieldWorkEvidence } from './types'
+import type { CoverageRequest, Employee, Evaluation, ImportConfiguration, Leave, Preview, Punch, SourceFile, FieldWorkEvidence, RemoteClockPunch } from './types'
 import { isReviewNotApplicable, REVIEWER_NOT_APPLICABLE, requiresReview } from './review-policy'
 import { resolveWorkday, type ReducedSchedule, type Workday } from './workday'
 import { attendanceSites } from './site'
@@ -20,7 +20,7 @@ export function requestCoversDate(request: CoverageRequest, date: string): boole
   return date <= (request.endDate ? dateKey(request.endDate) : dateKey(request.startDate))
 }
 
-export function evaluateDay(userId: string, date: string, punches: Punch[], requests: CoverageRequest[], leaves: Leave[], managerId: string | null, workday: Workday = resolveWorkday(date)): Evaluation {
+export function evaluateDay(userId: string, date: string, punches: Punch[], requests: CoverageRequest[], leaves: Leave[], managerId: string | null, workday: Workday = resolveWorkday(date), remotePunches: RemoteClockPunch[] = []): Evaluation {
   const EXIT = workday.endSeconds, LATE_FROM = workday.startSeconds + 11 * 60
   const times = [...new Set(punches.map(p => p.seconds))].sort((a, b) => a - b)
   let entrySeconds: number | null = times[0] ?? null
@@ -34,6 +34,19 @@ export function evaluateDay(userId: string, date: string, punches: Punch[], requ
     systemNotes.push('Este día no checó entrada; solo hay una marcación al terminar la jornada.')
   } else if (entrySeconds !== null && exitSeconds === null) {
     systemNotes.push('Este día no checó salida. Se conserva únicamente la entrada registrada.')
+  }
+  if (remotePunches.length) {
+    const entries = remotePunches.filter(p => p.kind === 'ENTRY').map(p => p.seconds)
+    const exits = remotePunches.filter(p => p.kind === 'EXIT').map(p => p.seconds)
+    if (entrySeconds !== null) entries.push(entrySeconds)
+    if (exitSeconds !== null) exits.push(exitSeconds)
+    entrySeconds = entries.length ? Math.min(...entries) : null
+    exitSeconds = exits.length ? Math.max(...exits) : null
+    systemNotes.length = 0
+    systemNotes.push('Incluye checadas del checador remoto con foto y hora del servidor (Ciudad de México).')
+    if (entrySeconds === null) systemNotes.push('Este día no checó entrada.')
+    if (exitSeconds === null) systemNotes.push('Este día no checó salida.')
+    times.push(...remotePunches.map(p => p.seconds))
   }
   if (!times.length) systemNotes.push('Este día no checó: registro sin entrada ni salida.')
   if (workday.ruleIds.length) systemNotes.push('Jornada reducida aplicada: ' + Math.floor(workday.startSeconds / 3600).toString().padStart(2, '0') + ':' + Math.floor(workday.startSeconds % 3600 / 60).toString().padStart(2, '0') + '–' + Math.floor(workday.endSeconds / 3600).toString().padStart(2, '0') + ':' + Math.floor(workday.endSeconds % 3600 / 60).toString().padStart(2, '0') + '.')
@@ -69,10 +82,10 @@ export function evaluateDay(userId: string, date: string, punches: Punch[], requ
   if (medical.length + applicable.filter(r => FULL_DAY.has(r.type)).length > 1) systemNotes.push('Hay más de una autorización que cubre esta fecha.')
   return { userId, date, managerId, entrySeconds, exitSeconds, exitEstimated, lateMinutes,
     detectedIssues: [...new Set(detectedIssues)], coverage: [...new Set(coverage)], systemNotes,
-    evidence: { punches, requestIds: applicable.map(r => r.id).sort(), leaveIds: medical.map(l => l.id).sort(), workday } }
+    evidence: { punches, requestIds: applicable.map(r => r.id).sort(), leaveIds: medical.map(l => l.id).sort(), workday, ...(remotePunches.length ? { remotePunches } : {}) } }
 }
 
-export function buildPreview(input: { start: string; end: string; sources: SourceFile[]; employees: Employee[]; requests: CoverageRequest[]; leaves: Leave[]; holidays: string[]; config: ImportConfiguration; fieldWork?: FieldWorkEvidence[]; fieldErrors?: string[]; fieldWarnings?: string[]; fieldReferences?: Preview['fieldReferences']; schedules?: ReducedSchedule[] }): Preview {
+export function buildPreview(input: { start: string; end: string; sources: SourceFile[]; employees: Employee[]; requests: CoverageRequest[]; leaves: Leave[]; holidays: string[]; config: ImportConfiguration; fieldWork?: FieldWorkEvidence[]; fieldErrors?: string[]; fieldWarnings?: string[]; fieldReferences?: Preview['fieldReferences']; schedules?: ReducedSchedule[]; remotePunches?: RemoteClockPunch[] }): Preview {
   const { start, end, sources, employees, config } = input
   const siteFor = attendanceSites(sources, employees, config)
   const dates = datesBetween(start, end), errors: string[] = [...(input.fieldErrors || [])], warnings = [...sources.flatMap(source => source.warnings), ...(input.fieldWarnings || [])]
@@ -119,12 +132,12 @@ export function buildPreview(input: { start: string; end: string; sources: Sourc
       if (date < dateKey(employee.entryDate) || !isWorkday(date, holidays)) continue
       const workday = resolveWorkday(date, siteFor(employee.id, date), input.schedules)
       if (workday.ambiguous && !notApplicable) errors.push(`Selecciona la sede de ${employee.name} en el padrón para aplicar su jornada del ${date}.`)
-      const row = evaluateDay(employee.id, date, grouped.get(`${employee.id}|${date}`) || [], input.requests, input.leaves, managerId, workday)
+      const row = evaluateDay(employee.id, date, grouped.get(`${employee.id}|${date}`) || [], input.requests, input.leaves, managerId, workday, (input.remotePunches || []).filter(p => p.userId === employee.id && p.date === date))
       const fieldWork = (input.fieldWork || []).filter(day => day.userId === employee.id && day.date === date)
       if (fieldWork.length) {
         row.coverage.push('Trabajo de campo (Salesforce)')
         row.evidence.fieldWork = fieldWork
-        const summary = workedTime(fieldWork, row.evidence.punches, workday)
+        const summary = workedTime(fieldWork, row.evidence.punches, workday, row.evidence.remotePunches)
         row.evidence.workSummary = summary
         const authorized = row.coverage.includes('Incapacidad') || [...FULL_DAY.values()].some(label => row.coverage.includes(label))
         row.systemNotes.push('Trabajo registrado: ' + durationLabel(summary.fieldSeconds) + ' en campo + ' + durationLabel(summary.officeSeconds) + ' en oficina, sin superponer los servicios con las checadas.')

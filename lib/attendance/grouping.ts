@@ -8,6 +8,7 @@ export type AttendanceDisplayDay = {
   detectedIssues: string[]; coverage: string[]; reviewStatus: string; decision: string
   justification: string | null; managerComment: string | null; reviewNotApplicable?: boolean
   systemNotes?: string[]; punches?: Punch[]; fieldWork?: FieldWorkEvidence[]
+  remotePunches?: import('./types').RemoteClockPunch[]
   workSummary?: import('./field-hours').WorkSummary
 }
 

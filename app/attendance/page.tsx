@@ -1,9 +1,11 @@
+import { DirectRemoteAttendance } from '@/components/attendance/direct-remote-attendance'
+import { RemoteEvidence } from '@/components/attendance/remote-evidence'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { attendanceActor } from '@/lib/attendance/access'
-import { displayDate, displayTime, displayWeekday, weekStart, addDateDays } from '@/lib/attendance/dates'
+import { displayDate, displayTime, displayWeekday, weekStart, addDateDays, todayInMexico } from '@/lib/attendance/dates'
 import { DECISION_LABELS, REVIEW_LABELS } from '@/lib/attendance/types'
 import { AttendanceDecisionBadge, AttendanceIssueLabels, attendanceCardColors } from '@/components/attendance/incident-label'
 import { isReviewNotApplicable, NOT_APPLICABLE_LABEL } from '@/lib/attendance/review-policy'
@@ -13,7 +15,7 @@ import { reviewAttendanceDay } from '@/app/actions/attendance-review'
 import { ATTENDANCE_CATEGORIES } from '@/lib/attendance/categories'
 import { attendanceCategoryWhere } from '@/lib/attendance/category-query'
 import { FieldEvidence } from '@/components/attendance/field-evidence'
-import { getFieldWork, getWorkSummary } from '@/lib/attendance/field-evidence'
+import { getFieldWork, getWorkSummary, getRemotePunches } from '@/lib/attendance/field-evidence'
 import { Textarea } from '@/components/ui/textarea'
 
 export default async function MyAttendancePage({ searchParams }: { searchParams: { view?: string; period?: string; state?: string; category?: string; page?: string } }) {
@@ -47,6 +49,7 @@ export default async function MyAttendancePage({ searchParams }: { searchParams:
       <dl className="my-4 grid grid-cols-2 gap-3 rounded-lg bg-slate-50 p-3 text-sm"><div><dt className="text-xs text-slate-500">Entrada</dt><dd className="mt-1 font-medium">{displayTime(day.entrySeconds)}</dd></div><div><dt className="text-xs text-slate-500">Salida</dt><dd className="mt-1 font-medium">{displayTime(day.exitEstimated ? null : day.exitSeconds)}</dd></div></dl>
       <div className="text-sm font-medium">{isReviewNotApplicable(day.evidence) ? 'Fuera del proceso de incidencias' : <AttendanceIssueLabels day={day} />}</div>
       {!!day.coverage.length && <p className="mt-2 text-xs text-green-800">Autorizaciones: {day.coverage.join(' · ')}</p>}
+      <RemoteEvidence punches={getRemotePunches(day.evidence)} />
       <FieldEvidence rows={getFieldWork(day.evidence)} summary={getWorkSummary(day.evidence)} />
       {day.systemNotes.filter(note => !note.startsWith('Salida asignada automáticamente')).map(note => <p key={note} className="mt-2 text-xs text-slate-500">{note}</p>)}
       <p className="mt-3 text-xs text-slate-500">Responsable: {isReviewNotApplicable(day.evidence) ? NOT_APPLICABLE_LABEL : day.manager?.name || 'Sin revisión requerida'}</p>
@@ -56,7 +59,9 @@ export default async function MyAttendancePage({ searchParams }: { searchParams:
       {team && !isReviewNotApplicable(day.evidence) && ['WAITING_EMPLOYEE', 'WAITING_MANAGER'].includes(day.reviewStatus) && <AttendanceActionForm className="mt-4 border-t pt-4" action={reviewAttendanceDay} label="Guardar y enviar dictamen a RH" disabled={day.batch.needsRefresh || day.batch.status !== 'PUBLISHED'}><input type="hidden" name="dayId" value={day.id} /><input type="hidden" name="version" value={day.version} /><label className="block space-y-2 text-sm font-medium">Dictamen<select name="decision" required defaultValue="" className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 font-normal"><option value="" disabled>Selecciona el resultado de la revisión</option>{['JUSTIFIED', 'INCIDENT', 'LATE', 'ABSENCE', 'EARLY_EXIT', 'LATE_EARLY_EXIT'].map(value => <option key={value} value={value}>{DECISION_LABELS[value]}</option>)}</select></label><label className="block space-y-2 text-sm font-medium">Motivo del dictamen<Textarea name="comment" required minLength={5} maxLength={4000} rows={3} placeholder="Explica la aprobación o la clasificación de la incidencia." /></label></AttendanceActionForm>}
       {day.reviewStatus === 'RESOLVED' && !day.managerComment && <div className="mt-4 text-sm font-medium">{isReviewNotApplicable(day.evidence) ? NOT_APPLICABLE_LABEL : <AttendanceDecisionBadge day={day} />}</div>}
     </article>
-  return <AttendanceShell role={actor.role} title={team ? 'Dictámenes a mi cargo' : 'Mi asistencia e incidencias'} description={team ? 'Abre cada colaborador para revisar sus días en orden de fecha, aprobar o clasificar sus incidencias y consultar los dictámenes resueltos.' : 'Consulta tus incidencias por semana y día, en orden de fecha. Esta vista es de solo lectura; aquí aparecerán los dictámenes de tu jefe.'}>
+  return <AttendanceShell role={actor.role} canUploadFieldReports={actor.canUploadFieldReports} title={team ? 'Dictámenes a mi cargo' : 'Mi asistencia e incidencias'} description={team ? 'Abre cada colaborador para revisar sus días en orden de fecha, aprobar o clasificar sus incidencias y consultar los dictámenes resueltos.' : 'Consulta tus incidencias por semana y día, en orden de fecha. Esta vista es de solo lectura; aquí aparecerán los dictámenes de tu jefe.'}>
+    <DirectRemoteAttendance team={team} today={todayInMexico()} />
+    <h2 className="text-lg font-semibold text-slate-800">{team ? 'Incidencias de mi equipo' : 'Mis incidencias'} · periodos publicados</h2>
     <form method="get" className="flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-white p-4">
       {team && <input type="hidden" name="view" value="team" />}
       <label className="space-y-1 text-xs text-slate-500">Periodo<select name="period" defaultValue={searchParams.period || ''} className="block h-11 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-800"><option value="">Todos los periodos</option>{batches.map(batch => <option key={batch.id} value={batch.id}>{displayDate(batch.startDate)} — {displayDate(batch.endDate)}</option>)}</select></label>

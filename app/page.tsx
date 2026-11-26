@@ -1,3 +1,4 @@
+import { RemoteClock } from '@/components/dashboard/remote-clock'
 import { auth, signOut } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { redirect } from 'next/navigation'
@@ -31,7 +32,7 @@ export default async function Home({ searchParams }: {
   const user = await prisma.user.findUnique({
     where: { email: session.user.email },
     select: {
-      id: true, name: true, jobTitle: true, role: true, canUploadFieldReports: true, isBlacklisted: true,
+      id: true, name: true, jobTitle: true, role: true, canUploadFieldReports: true, isBlacklisted: true, isRemote: true,
       entryDate: true, birthDate: true, balance: true,
       backupId: true, backupStartDate: true, backupEndDate: true,
       subordinates: { select: { id: true } },
@@ -127,6 +128,7 @@ export default async function Home({ searchParams }: {
             {view !== 'new' && <Button asChild className="h-11 gap-2 rounded-lg bg-[#3e712c] px-5 text-white shadow-none hover:bg-[#315a23]"><Link href="/?view=new"><Plus className="h-4 w-4" /> Nueva solicitud</Link></Button>}
           </div>
 
+          {view === 'home' && user.isRemote && !user.isBlacklisted && <RemoteClock />}
           {view === 'home' && <VacationBalanceSummary totalDays={totalDays} usedDays={usedDays} pendingDays={pendingDays} pendingHRDays={pendingHR._sum.daysRequested ?? 0} cycleStart={cycleStart} cycleEnd={cycleEnd} nextTotalDays={nextPeriodTotalDays} nextRequestedDays={nextPeriodUsedDays} nextCycleStart={nextCycleStart} nextCycleEnd={nextCycleEnd} />}
           {view === 'new' && <div aria-label="Días disponibles" className="flex flex-wrap gap-x-6 gap-y-2 rounded-xl border border-[#dce8d7] bg-[#edf4e9] px-5 py-3 text-sm text-[#345d27]">
             <p>Periodo actual: <strong>{totalDays - usedDays - pendingDays} días disponibles</strong></p>

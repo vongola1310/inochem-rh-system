@@ -1,5 +1,6 @@
 'use client'
 
+import { RemoteEvidence } from './remote-evidence'
 import { useId, useMemo, useState } from 'react'
 import { ChevronDown, Users, UserRound, GitBranch } from 'lucide-react'
 import { Input } from '@/components/ui/input'
@@ -42,6 +43,7 @@ function AttendanceDayCard({ day, preview }: { day: AttendanceDisplayDay; previe
     {!!day.coverage.length && <p className="mt-2 text-xs text-green-800">{day.coverage.join(' · ')}</p>}
     {day.systemNotes?.filter(note => !note.startsWith('Salida asignada automáticamente')).map(note => <p key={note} className="mt-2 text-xs leading-relaxed text-slate-500">{note}</p>)}
     {!preview && (day.justification || day.managerComment) && <div className="mt-3 space-y-3 border-t border-slate-100 pt-3 text-xs leading-relaxed"><div hidden={!day.justification}><p className="font-semibold text-slate-500">Justificación anterior del colaborador</p><p className="mt-1 whitespace-pre-wrap break-words">{day.justification}</p></div>{day.managerComment && <div className="rounded-md bg-blue-50 p-3"><p className="font-semibold text-blue-900">Dictamen de {day.manager?.name || 'su responsable'}</p><p className="mt-1 whitespace-pre-wrap break-words">{day.managerComment}</p></div>}</div>}
+    <RemoteEvidence punches={day.remotePunches} />
     <FieldEvidence rows={day.fieldWork || []} summary={day.workSummary} />
     {day.punches && <details className="mt-3 text-xs"><summary className="cursor-pointer py-1 font-medium text-[#3e712c]">Ver checadas de origen</summary><ul className="mt-2 space-y-1 text-slate-600">{day.punches.map((punch, index) => <li key={index}>{punch.site === 'AJUSCO' ? 'Ajusco' : 'Periférico'} · {displayTime(punch.seconds)} · fila {punch.row}</li>)}{!day.punches.length && <li>No hay marcaciones para este día.</li>}</ul></details>}
   </article>

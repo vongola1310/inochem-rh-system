@@ -10,3 +10,8 @@ export function getWorkSummary(evidence: unknown): import('./field-hours').WorkS
   const summary = evidence.workSummary as import('./field-hours').WorkSummary | undefined
   return summary && typeof summary.workedSeconds === 'number' && Array.isArray(summary.officeIntervals) ? summary : undefined
 }
+
+export function getRemotePunches(evidence: unknown): import('./types').RemoteClockPunch[] {
+  if (!evidence || typeof evidence !== 'object' || !('remotePunches' in evidence) || !Array.isArray(evidence.remotePunches)) return []
+  return evidence.remotePunches.filter(item => item && typeof item.id === 'string' && ['ENTRY', 'EXIT'].includes(item.kind) && typeof item.seconds === 'number')
+}
