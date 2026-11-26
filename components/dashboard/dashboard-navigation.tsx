@@ -20,6 +20,7 @@ export function DashboardNavigation({ view, isManager, isHR, isAdmin = false, ca
     ...((isHR || isAdmin) ? [{ label: 'Días de jornada corta o reducida', href: '/admin/reduced-workdays', icon: CalendarDays, active: false, count: 0 }] : []),
     ...(canUploadFieldReports ? [{ label: 'Subir reporte de personal de campo', href: '/field-reports', icon: FileText, active: false, count: 0 }] : []),
     ...(isManager ? [
+      { label: 'Planeación', href: '/planning', icon: CalendarDays, active: false, count: 0 },
       { label: 'Aprobaciones', href: '/?view=approvals', icon: ClipboardCheck, active: view === 'approvals', count: pendingCount },
       { label: 'Colaboradores', href: '/team/history', icon: Users, active: false, count: 0 },
     ] : []),

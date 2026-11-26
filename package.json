@@ -8,6 +8,7 @@
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
+    "test:planning": "node --test tests/planning.test.cjs",
     "test:remote-clock": "node --test tests/remote-clock.test.cjs",
     "test:dates": "node --test tests/request-dates.test.cjs",
     "test:balances": "node --test tests/vacation-balances.test.cjs",
